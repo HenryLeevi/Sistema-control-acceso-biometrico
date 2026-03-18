@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import {
   LayoutDashboard, Users, DoorOpen, Clock, ShieldCheck,
-  AlertTriangle, FileText, LogOut, Menu, X, Fingerprint
+  AlertTriangle, FileText, LogOut, Menu, X, Fingerprint, QrCode, CalendarDays
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,24 +17,38 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
+  roles: string[]; // Qué roles pueden ver este item
 }
 
-const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'Usuarios', href: '/admin/usuarios', icon: Users },
-  { label: 'Aulas', href: '/admin/aulas', icon: DoorOpen },
-  { label: 'Horarios', href: '/admin/horarios', icon: Clock },
-  { label: 'Permisos', href: '/admin/permisos', icon: ShieldCheck },
-  { label: 'Eventos', href: '/admin/eventos', icon: Fingerprint },
-  { label: 'Alertas', href: '/admin/alertas', icon: AlertTriangle },
-  { label: 'Reportes', href: '/admin/reportes', icon: FileText },
+const allNavItems: NavItem[] = [
+  { label: 'Mi Panel',         href: '/admin',            icon: LayoutDashboard, roles: ['admin', 'subadmin', 'seguridad', 'docente'] },
+  { label: 'Mis Horarios',     href: '/admin',            icon: CalendarDays,    roles: ['docente'] },
+  { label: 'Generar OTP',      href: '/admin/otp',        icon: QrCode,          roles: ['docente'] },
+  { label: 'Usuarios',         href: '/admin/usuarios',   icon: Users,           roles: ['admin', 'subadmin'] },
+  { label: 'Aulas',            href: '/admin/aulas',      icon: DoorOpen,        roles: ['admin', 'subadmin'] },
+  { label: 'Horarios',         href: '/admin/horarios',   icon: Clock,           roles: ['admin', 'subadmin'] },
+  { label: 'Permisos',         href: '/admin/permisos',   icon: ShieldCheck,     roles: ['admin', 'subadmin'] },
+  { label: 'Eventos',          href: '/admin/eventos',    icon: Fingerprint,     roles: ['admin', 'subadmin', 'seguridad'] },
+  { label: 'Alertas',          href: '/admin/alertas',    icon: AlertTriangle,   roles: ['admin', 'subadmin', 'seguridad'] },
+  { label: 'Reportes',         href: '/admin/reportes',   icon: FileText,        roles: ['admin', 'subadmin'] },
+  { label: 'Pantalla Acceso',  href: '/acceso',           icon: Fingerprint,     roles: ['admin'] },
 ];
+
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, roles } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Filter nav items by current user roles
+  const navItems = allNavItems.filter(item =>
+    item.roles.some(r => roles.includes(r as any))
+  );
+  // Deduplicate by href (e.g. 'Mi Panel' and 'Mis Horarios' both point to /admin)
+  const uniqueNavItems = navItems.filter((item, idx, arr) =>
+    arr.findIndex(x => x.href === item.href && x.label === item.label) === idx
+  );
 
   const handleLogout = () => {
     logout();
@@ -75,12 +89,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
+          {uniqueNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
               <Link
-                key={item.href}
+                key={item.label}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
