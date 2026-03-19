@@ -38,6 +38,22 @@ class LoginView(TokenObtainPairView):
         token_data = serializer.validated_data
         django_user = serializer.user
 
+        # Fetch real roles from the UserRole model via email match
+        roles = []
+        try:
+            from apps.users.models import User as AppUser
+            from apps.roles.models import UserRole
+            app_user = AppUser.objects.get(email=django_user.email)
+            roles = list(
+                UserRole.objects.filter(user=app_user)
+                .select_related("role")
+                .values_list("role__name", flat=True)
+            )
+        except Exception:
+            # Fallback: superusers get admin role
+            if django_user.is_superuser:
+                roles = ["ADMIN"]
+
         user_data = {
             "id": str(django_user.pk),
             "username": django_user.username,
@@ -46,14 +62,14 @@ class LoginView(TokenObtainPairView):
             "apellido": django_user.last_name or "",
             "is_active": django_user.is_active,
             "created_at": django_user.date_joined.isoformat(),
-            "roles": ["admin"] if django_user.is_superuser else [],
+            "roles": roles,
         }
 
         return Response(
             {
                 **token_data,
                 "user": user_data,
-                "roles": user_data["roles"],
+                "roles": roles,
             },
             status=status.HTTP_200_OK,
         )
@@ -82,6 +98,22 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
+
+        # Fetch real roles from UserRole model via email
+        roles = []
+        try:
+            from apps.users.models import User as AppUser
+            from apps.roles.models import UserRole
+            app_user = AppUser.objects.get(email=user.email)
+            roles = list(
+                UserRole.objects.filter(user=app_user)
+                .select_related("role")
+                .values_list("role__name", flat=True)
+            )
+        except Exception:
+            if user.is_superuser:
+                roles = ["ADMIN"]
+
         return Response(
             {
                 "id": str(user.pk),
@@ -91,6 +123,6 @@ class MeView(APIView):
                 "apellido": user.last_name or "",
                 "is_active": user.is_active,
                 "created_at": user.date_joined.isoformat(),
-                "roles": ["admin"] if user.is_superuser else [],
+                "roles": roles,
             }
         )

@@ -24,6 +24,7 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
 
 # ─────────────────────────────────────────
 # Application definition
@@ -101,14 +102,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # ─────────────────────────────────────────
 # Database (via dj-database-url)
+# SSL is specified in DATABASE_URL (?sslmode=require)
 # ─────────────────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///db.sqlite3")
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.getenv("DATABASE_URL", "sqlite:///db.sqlite3"),
+        default=DATABASE_URL,
         conn_max_age=600,
-        ssl_require=os.getenv("DB_SSL_REQUIRE", "False") == "True",
     )
 }
+
+print(f'Current database engine is {DATABASES["default"]["ENGINE"]} → {DATABASES["default"]["NAME"]}')
+
 
 # ─────────────────────────────────────────
 # Password validation

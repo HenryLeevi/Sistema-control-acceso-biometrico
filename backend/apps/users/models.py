@@ -21,10 +21,10 @@ class User(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
-    dui = models.CharField(max_length=10, unique=True, help_text="DUI format: 00000000-0")
+    dui = models.CharField(max_length=10, unique=True, blank=True, null=True, help_text="DUI format: 00000000-0")
     email = models.EmailField(unique=True)
-    fecha_nacimiento = models.DateField()
-    residencia = models.CharField(max_length=255)
+    fecha_nacimiento = models.DateField(blank=True, null=True)
+    residencia = models.CharField(max_length=255, blank=True, default="")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
