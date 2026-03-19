@@ -1,0 +1,29 @@
+# Core
+Django==4.2.11
+djangorestframework==3.15.1
+djangorestframework-simplejwt==5.3.1
+
+# Database
+psycopg2-binary==2.9.9
+dj-database-url==2.1.0
+
+# Environment
+python-dotenv==1.0.1
+
+# Django Channels (WebSocket support)
+channels==4.0.0
+channels-redis==4.2.0
+daphne==4.1.0
+
+# Azure
+azure-storage-blob==12.19.1
+azure-cognitiveservices-vision-face==0.6.0
+msrest==0.7.1
+
+# Utilities
+Pillow==10.2.0
+whitenoise==6.6.0
+django-cors-headers==4.3.1
+
+# Filtering & Pagination
+django-filter==23.5
