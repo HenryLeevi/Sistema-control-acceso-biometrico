@@ -1,0 +1,112 @@
+"""
+apps/access/serializers.py
+
+Serializers:
+  - AulaSerializer            : Door management
+  - ScheduleSerializer        : Time window
+  - AccessPermissionSerializer: User-door-schedule grant
+  - AccessEventSerializer     : Read-only audit log
+  - AccessValidateSerializer  : Input for POST /api/access/validate/
+"""
+
+from rest_framework import serializers
+from .models import Aula, Schedule, AccessPermission, AccessEvent
+
+
+class AulaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Aula
+        fields = [
+            "id",
+            "code",
+            "description",
+            "is_active",
+            "desired_state",
+            "actual_state",
+        ]
+        read_only_fields = ["id"]
+
+    def validate(self, data):
+        """desired_state and actual_state are independent — no cross-validation needed here."""
+        return data
+
+
+class ScheduleSerializer(serializers.ModelSerializer):
+    day_label = serializers.CharField(source="get_day_of_week_display", read_only=True)
+
+    class Meta:
+        model = Schedule
+        fields = ["id", "day_of_week", "day_label", "start_time", "end_time"]
+        read_only_fields = ["id", "day_label"]
+
+    def validate(self, data):
+        if data.get("start_time") and data.get("end_time"):
+            if data["start_time"] >= data["end_time"]:
+                raise serializers.ValidationError(
+                    "La hora de inicio debe ser anterior a la hora de fin."
+                )
+        return data
+
+
+class AccessPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AccessPermission
+        fields = ["id", "user", "aula", "schedule", "is_active"]
+        read_only_fields = ["id"]
+
+
+class AccessEventSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer. AccessEvents are created exclusively by the
+    service layer — never via direct API POST.
+    """
+
+    class Meta:
+        model = AccessEvent
+        fields = [
+            "id",
+            "user",
+            "aula",
+            "device",
+            "timestamp",
+            "method",
+            "result",
+            "reason",
+            "alert_flag",
+            "correlation_id",
+        ]
+        read_only_fields = fields
+
+
+# ─────────────────────────────────────────
+# Access Validation Input Serializer
+# ─────────────────────────────────────────
+
+class AccessValidateSerializer(serializers.Serializer):
+    """
+    Input schema for POST /api/access/validate/.
+
+    method : FACE | PIN | MANUAL
+    data   : Opaque payload (face image URL, PIN string, or manual override token)
+    aula_id: UUID of the target door
+    """
+
+    METHOD_CHOICES = [
+        ("FACE", "Face Recognition"),
+        ("PIN", "PIN Contingency"),
+        ("MANUAL", "Manual Override"),
+    ]
+
+    method = serializers.ChoiceField(choices=METHOD_CHOICES)
+    data = serializers.CharField(
+        help_text="Opaque authentication payload. Interpretation depends on method.",
+    )
+    aula_id = serializers.UUIDField()
+
+    def validate_aula_id(self, value):
+        from .models import Aula
+        if not Aula.objects.filter(id=value, is_active=True).exists():
+            raise serializers.ValidationError(
+                "El aula especificada no existe o no está activa."
+            )
+        return value
