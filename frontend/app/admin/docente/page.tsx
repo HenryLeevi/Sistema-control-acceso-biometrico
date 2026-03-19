@@ -94,7 +94,7 @@ export default function DocenteDashboard() {
   const progressColor = tiempoRestante > 180 ? 'bg-green-500' : tiempoRestante > 60 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
-    <RoleGuard allowedRoles={['docente']}>
+    <RoleGuard allowedRoles={['DOCENTE']}>
       <AdminLayout>
         <div className="space-y-6">
 

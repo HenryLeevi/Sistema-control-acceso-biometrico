@@ -11,7 +11,7 @@ export const mockUsers: User[] = [
     nombre: 'Henry',
     apellido: 'Valdez',
     is_active: true,
-    roles: ['admin'],
+    roles: ['ADMIN'],
     created_at: '2024-01-01T10:00:00Z',
   },
   {
@@ -21,7 +21,7 @@ export const mockUsers: User[] = [
     nombre: 'María',
     apellido: 'García',
     is_active: true,
-    roles: ['docente'],
+    roles: ['DOCENTE'],
     created_at: '2024-01-02T10:00:00Z',
   },
   {
@@ -31,7 +31,7 @@ export const mockUsers: User[] = [
     nombre: 'Carlos',
     apellido: 'López',
     is_active: true,
-    roles: ['seguridad'],
+    roles: ['SEGURIDAD'],
     created_at: '2024-01-03T10:00:00Z',
   },
 ];

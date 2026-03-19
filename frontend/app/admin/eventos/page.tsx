@@ -64,7 +64,7 @@ export default function EventosPage() {
   const totalConAlerta = eventos.filter((e: AccessEvent) => e.alert_flag).length;
 
   return (
-    <RoleGuard allowedRoles={['admin', 'subadmin', 'seguridad']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'SEGURIDAD']}>
       <AdminLayout>
         <div className="space-y-6">
           {/* Header */}

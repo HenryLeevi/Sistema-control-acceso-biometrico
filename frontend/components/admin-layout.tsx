@@ -21,17 +21,17 @@ interface NavItem {
 }
 
 const allNavItems: NavItem[] = [
-  { label: 'Mi Panel',         href: '/admin',            icon: LayoutDashboard, roles: ['admin', 'subadmin', 'seguridad', 'docente'] },
-  { label: 'Mis Horarios',     href: '/admin',            icon: CalendarDays,    roles: ['docente'] },
-  { label: 'Generar OTP',      href: '/admin/otp',        icon: QrCode,          roles: ['docente'] },
-  { label: 'Usuarios',         href: '/admin/usuarios',   icon: Users,           roles: ['admin', 'subadmin'] },
-  { label: 'Aulas',            href: '/admin/aulas',      icon: DoorOpen,        roles: ['admin', 'subadmin'] },
-  { label: 'Horarios',         href: '/admin/horarios',   icon: Clock,           roles: ['admin', 'subadmin'] },
-  { label: 'Permisos',         href: '/admin/permisos',   icon: ShieldCheck,     roles: ['admin', 'subadmin'] },
-  { label: 'Eventos',          href: '/admin/eventos',    icon: Fingerprint,     roles: ['admin', 'subadmin', 'seguridad'] },
-  { label: 'Alertas',          href: '/admin/alertas',    icon: AlertTriangle,   roles: ['admin', 'subadmin', 'seguridad'] },
-  { label: 'Reportes',         href: '/admin/reportes',   icon: FileText,        roles: ['admin', 'subadmin'] },
-  { label: 'Pantalla Acceso',  href: '/acceso',           icon: Fingerprint,     roles: ['admin'] },
+  { label: 'Mi Panel',         href: '/admin',            icon: LayoutDashboard, roles: ['ADMIN', 'SUBADMIN', 'SEGURIDAD', 'DOCENTE'] },
+  { label: 'Mis Horarios',     href: '/admin',            icon: CalendarDays,    roles: ['DOCENTE'] },
+  { label: 'Generar OTP',      href: '/admin/otp',        icon: QrCode,          roles: ['DOCENTE'] },
+  { label: 'Usuarios',         href: '/admin/usuarios',   icon: Users,           roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Aulas',            href: '/admin/aulas',      icon: DoorOpen,        roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Horarios',         href: '/admin/horarios',   icon: Clock,           roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Permisos',         href: '/admin/permisos',   icon: ShieldCheck,     roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Eventos',          href: '/admin/eventos',    icon: Fingerprint,     roles: ['ADMIN', 'SUBADMIN', 'SEGURIDAD'] },
+  { label: 'Alertas',          href: '/admin/alertas',    icon: AlertTriangle,   roles: ['ADMIN', 'SUBADMIN', 'SEGURIDAD'] },
+  { label: 'Reportes',         href: '/admin/reportes',   icon: FileText,        roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Pantalla Acceso',  href: '/acceso',           icon: Fingerprint,     roles: ['SEGURIDAD'] },
 ];
 
 
@@ -41,9 +41,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { user, logout, roles } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Filter nav items by current user roles
+  // Case-insensitive comparison — roles from backend are uppercase, nav items now uppercase too
   const navItems = allNavItems.filter(item =>
-    item.roles.some(r => roles.includes(r as any))
+    item.roles.some(r => roles.map(x => x.toUpperCase()).includes(r.toUpperCase()))
   );
   // Deduplicate by href (e.g. 'Mi Panel' and 'Mis Horarios' both point to /admin)
   const uniqueNavItems = navItems.filter((item, idx, arr) =>
@@ -165,7 +165,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 </Avatar>
                 <div className="hidden md:block text-left">
                   <div className="text-sm font-medium">{user?.nombre} {user?.apellido}</div>
-                  <div className="text-xs text-slate-500">{user?.roles.join(', ')}</div>
+                  <div className="text-xs text-slate-500">{user?.roles?.join(', ')}</div>
                 </div>
               </Button>
             </DropdownMenuTrigger>

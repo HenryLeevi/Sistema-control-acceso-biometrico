@@ -2,17 +2,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, apiClientFormData } from './api-client';
 import { MockAPI } from './mock-data';
 import {
-  User, Aula, Schedule, AccessPermission, AccessEvent, Alerta,
-  KPIData, ReporteResumen, PaginatedResponse, OTPCode
+  User, Aula, Schedule, AccessPermission, AccessEvent, AppRole, UserRole,
+  KPIData, ReporteResumen, PaginatedResponse, OTPCode,
 } from './types';
 
 const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
   ? true
   : process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-// ── Users (GET /api/users/) ──────────────────────────
+// ── Users (/api/users/) ──────────────────────────────
 
-export const useUsuarios = (filters?: any) => {
+export const useUsuarios = (filters?: Record<string, string>) => {
   return useQuery({
     queryKey: ['usuarios', filters],
     queryFn: async () => {
@@ -40,9 +40,7 @@ export const useCreateUsuario = () => {
       if (MOCK_MODE) return MockAPI.createUsuario(data);
       return apiClient<User>('/users/', { method: 'POST', body: JSON.stringify(data) });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
   });
 };
 
@@ -53,9 +51,18 @@ export const useUpdateUsuario = () => {
       if (MOCK_MODE) return MockAPI.updateUsuario(id, data);
       return apiClient<User>(`/users/${id}/`, { method: 'PATCH', body: JSON.stringify(data) });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
+  });
+};
+
+export const useDeleteUsuario = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (MOCK_MODE) return;
+      return apiClient<void>(`/users/${id}/`, { method: 'DELETE' });
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
   });
 };
 
@@ -65,21 +72,60 @@ export const useEnrolarBiometria = () => {
     mutationFn: async ({ usuarioId, imagenes }: { usuarioId: string; imagenes: File[] }) => {
       if (MOCK_MODE) return MockAPI.enrolarBiometria(usuarioId, imagenes);
       const formData = new FormData();
-      imagenes.forEach((img, index) => {
-        formData.append(`imagen_${index}`, img);
-      });
-      return apiClientFormData<{ success: boolean; message: string }>(
-        `/biometric/`,
-        formData
-      );
+      imagenes.forEach((img, index) => formData.append(`imagen_${index}`, img));
+      return apiClientFormData<{ success: boolean; message: string }>(`/biometric/`, formData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
+  });
+};
+
+// ── Roles (/api/roles/) ──────────────────────────────
+
+export const useRoles = () => {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      if (MOCK_MODE) return { results: [] as AppRole[], count: 0, next: null, previous: null };
+      return apiClient<PaginatedResponse<AppRole>>('/roles/');
     },
   });
 };
 
-// ── Aulas (GET /api/access/aulas/) ───────────────────
+export const useUserRoles = (userId?: string) => {
+  return useQuery({
+    queryKey: ['user-roles', userId],
+    queryFn: async () => {
+      if (MOCK_MODE) return { results: [] as UserRole[], count: 0, next: null, previous: null };
+      const url = userId ? `/roles/assignments/?user=${userId}` : '/roles/assignments/';
+      return apiClient<PaginatedResponse<UserRole>>(url);
+    },
+    enabled: true,
+  });
+};
+
+export const useCreateUserRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { user: string; role: string }) => {
+      if (MOCK_MODE) return;
+      return apiClient<UserRole>('/roles/assignments/', { method: 'POST', body: JSON.stringify(data) });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-roles'] }),
+  });
+};
+
+export const useDeleteUserRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (MOCK_MODE) return;
+      return apiClient<void>(`/roles/assignments/${id}/`, { method: 'DELETE' });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-roles'] }),
+  });
+};
+
+// ── Aulas (/api/access/aulas/) ───────────────────────
 
 export const useAulas = () => {
   return useQuery({
@@ -98,13 +144,33 @@ export const useCreateAula = () => {
       if (MOCK_MODE) return MockAPI.createAula(data);
       return apiClient<Aula>('/access/aulas/', { method: 'POST', body: JSON.stringify(data) });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['aulas'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aulas'] }),
   });
 };
 
-// ── Schedules / Horarios (GET /api/access/schedules/) ─
+export const useUpdateAula = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Aula> }) => {
+      if (MOCK_MODE) return data as Aula;
+      return apiClient<Aula>(`/access/aulas/${id}/`, { method: 'PATCH', body: JSON.stringify(data) });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aulas'] }),
+  });
+};
+
+export const useDeleteAula = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (MOCK_MODE) return;
+      return apiClient<void>(`/access/aulas/${id}/`, { method: 'DELETE' });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aulas'] }),
+  });
+};
+
+// ── Schedules / Horarios (/api/access/schedules/) ────
 
 export const useHorarios = () => {
   return useQuery({
@@ -123,13 +189,33 @@ export const useCreateHorario = () => {
       if (MOCK_MODE) return MockAPI.createHorario(data);
       return apiClient<Schedule>('/access/schedules/', { method: 'POST', body: JSON.stringify(data) });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['horarios'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['horarios'] }),
   });
 };
 
-// ── Permissions / Permisos (GET /api/access/permissions/) ─
+export const useUpdateHorario = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Schedule> }) => {
+      if (MOCK_MODE) return data as Schedule;
+      return apiClient<Schedule>(`/access/schedules/${id}/`, { method: 'PATCH', body: JSON.stringify(data) });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['horarios'] }),
+  });
+};
+
+export const useDeleteHorario = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (MOCK_MODE) return;
+      return apiClient<void>(`/access/schedules/${id}/`, { method: 'DELETE' });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['horarios'] }),
+  });
+};
+
+// ── Permissions / Permisos (/api/access/permissions/) ─
 
 export const usePermisos = (usuarioId?: string) => {
   return useQuery({
@@ -149,45 +235,59 @@ export const useCreatePermiso = () => {
       if (MOCK_MODE) return MockAPI.createPermiso(data);
       return apiClient<AccessPermission>('/access/permissions/', { method: 'POST', body: JSON.stringify(data) });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['permisos'] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permisos'] }),
   });
 };
 
-// ── Events / Eventos (GET /api/access/events/) ───────
+export const useUpdatePermiso = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<AccessPermission> }) => {
+      if (MOCK_MODE) return data as AccessPermission;
+      return apiClient<AccessPermission>(`/access/permissions/${id}/`, { method: 'PATCH', body: JSON.stringify(data) });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permisos'] }),
+  });
+};
 
-export const useEventos = (filters?: any) => {
+export const useDeletePermiso = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (MOCK_MODE) return;
+      return apiClient<void>(`/access/permissions/${id}/`, { method: 'DELETE' });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permisos'] }),
+  });
+};
+
+// ── Events / Eventos (/api/access/events/) ──────────
+
+export const useEventos = (filters?: Record<string, string>) => {
   return useQuery({
     queryKey: ['eventos', filters],
     queryFn: async () => {
       if (MOCK_MODE) return MockAPI.getEventos(filters);
-      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/');
+      const params = filters ? '?' + new URLSearchParams(filters).toString() : '';
+      return apiClient<PaginatedResponse<AccessEvent>>(`/access/events/${params}`);
     },
   });
 };
 
-// ── Alerts (GET /api/access/events/?alert_flag=true) ─
-
+// useAlertas: returns all AccessEvents (backend is the source of truth for significance)
 export const useAlertas = () => {
   return useQuery({
     queryKey: ['alertas'],
     queryFn: async () => {
       if (MOCK_MODE) {
-        // In mock mode, return events that have alert_flag=true
-        const events = await MockAPI.getEventos();
-        return {
-          ...events,
-          results: events.results.filter(e => e.alert_flag),
-        };
+        return MockAPI.getEventos();
       }
-      // Use alert_flag filter on events endpoint
-      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/?alert_flag=true');
+      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/');
     },
   });
 };
 
-// ── KPI (GET /api/access/kpi/) ───────────────────────
+// ── KPI (/api/access/kpi/) ──────────────────────────
 
 export const useKPIData = () => {
   return useQuery({
@@ -200,9 +300,9 @@ export const useKPIData = () => {
   });
 };
 
-// ── Reports (GET /api/access/reports/summary/) ───────
+// ── Reports (/api/access/reports/summary/) ───────────
 
-export const useReporte = (filters?: any) => {
+export const useReporte = (filters?: Record<string, string>) => {
   return useQuery({
     queryKey: ['reporte', filters],
     queryFn: async () => {
@@ -212,7 +312,7 @@ export const useReporte = (filters?: any) => {
   });
 };
 
-// ── OTP (POST /api/users/pins/) ──────────────────────
+// ── OTP (/api/users/pins/) ──────────────────────────
 
 export const useGenerarOTP = () => {
   return useMutation({

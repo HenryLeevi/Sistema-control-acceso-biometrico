@@ -1,23 +1,42 @@
 // ─────────────────────────────────────────
 // types.ts — Matches backend serializer field names (English)
 // UI labels remain in Spanish — these are data types, not display labels.
+// Roles are uppercase to match backend (ADMIN, SUBADMIN, DOCENTE, SEGURIDAD).
 // ─────────────────────────────────────────
 
-export type Role = 'admin' | 'subadmin' | 'docente' | 'seguridad';
+// Backend returns roles as uppercase strings
+export type Role = 'ADMIN' | 'SUBADMIN' | 'DOCENTE' | 'SEGURIDAD';
+
+// Helper to normalize role from API (handles legacy lowercase too)
+export function normalizeRole(r: string): Role {
+  return r.toUpperCase() as Role;
+}
 
 export interface User {
   id: string;
   email: string;
   nombre: string;
   apellido: string;
-  dui?: string;
-  fecha_nacimiento?: string;
+  dui?: string | null;
+  fecha_nacimiento?: string | null;
   residencia?: string;
   is_active: boolean;
   created_at: string;
-  // Computed by frontend or login response — not in UserSerializer
+  // Present in login/me response — not in base UserSerializer
   username?: string;
   roles?: Role[];
+}
+
+export interface AppRole {
+  id: string;
+  name: Role;
+}
+
+export interface UserRole {
+  id: string;
+  user: string;   // UUID
+  role: string;   // UUID
+  role_name?: string;
 }
 
 export interface Aula {
@@ -25,30 +44,36 @@ export interface Aula {
   code: string;
   description: string;
   is_active: boolean;
-  desired_state?: string;
-  actual_state?: string;
+  desired_state?: 'OPEN' | 'CLOSED';
+  actual_state?: 'OPEN' | 'CLOSED';
 }
 
 export interface Schedule {
   id: string;
-  day_of_week: number;
-  day_label?: string;
-  start_time: string;
+  day_of_week: number;  // 0=Mon … 6=Sun
+  day_label?: string;   // "Lunes", "Martes"… (read-only, from backend)
+  start_time: string;   // "HH:MM:SS"
   end_time: string;
 }
 
 export interface AccessPermission {
   id: string;
-  user: string;   // UUID
-  aula: string;    // UUID
-  schedule: string; // UUID
+  user: string;    // UUID (writable)
+  aula: string;    // UUID (writable)
+  schedule: string; // UUID (writable)
   is_active: boolean;
+  // Read-only display extras from enriched serializer
+  aula_code?: string;
+  aula_description?: string;
+  schedule_display?: string;
+  user_email?: string;
+  user_nombre?: string;
 }
 
 export interface AccessEvent {
   id: string;
   timestamp: string;
-  user: string;     // UUID
+  user?: string;    // UUID (nullable — unidentified attempts)
   aula: string;     // UUID
   device?: string;  // UUID
   method: 'FACE' | 'PIN' | 'MANUAL';
@@ -58,6 +83,7 @@ export interface AccessEvent {
   correlation_id?: string;
 }
 
+// Legacy Alerta type — kept for backward compat but system uses AccessEvent
 export interface Alerta {
   id: string;
   evento_id: string;

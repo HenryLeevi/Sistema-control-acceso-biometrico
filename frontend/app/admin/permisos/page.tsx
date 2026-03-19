@@ -5,90 +5,103 @@ import { AdminLayout } from '@/components/admin-layout';
 import { RoleGuard } from '@/components/role-guard';
 import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePermisos, useCreatePermiso, useUsuarios, useAulas, useHorarios } from '@/lib/api-hooks';
+import {
+  usePermisos, useCreatePermiso, useUpdatePermiso, useDeletePermiso,
+  useUsuarios, useAulas, useHorarios,
+} from '@/lib/api-hooks';
 import { AccessPermission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+
+const emptyForm = { user: '', aula: '', schedule: '', is_active: true };
 
 export default function PermisosPage() {
-  const { data: permisosData, isLoading: permisosLoading } = usePermisos();
+  const { data: permisosData, isLoading } = usePermisos();
   const { data: usuariosData } = useUsuarios();
   const { data: aulasData } = useAulas();
   const { data: horariosData } = useHorarios();
   const createPermiso = useCreatePermiso();
+  const updatePermiso = useUpdatePermiso();
+  const deletePermiso = useDeletePermiso();
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    user: '',
-    aula: '',
-    schedule: '',
-    is_active: true,
-  });
+  const [editing, setEditing] = useState<AccessPermission | null>(null);
+  const [formData, setFormData] = useState(emptyForm);
 
   const permisos = permisosData?.results || [];
   const usuarios = usuariosData?.results || [];
   const aulas = aulasData?.results || [];
   const horarios = horariosData?.results || [];
+  const isPending = createPermiso.isPending || updatePermiso.isPending;
+
+  const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+  const openCreate = () => { setEditing(null); setFormData(emptyForm); setIsDialogOpen(true); };
+  const openEdit = (p: AccessPermission) => {
+    setEditing(p);
+    setFormData({ user: p.user, aula: p.aula, schedule: p.schedule, is_active: p.is_active });
+    setIsDialogOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.user || !formData.aula || !formData.schedule) {
+      toast({ title: 'Campos requeridos', description: 'Selecciona usuario, aula y horario', variant: 'destructive' });
+      return;
+    }
     try {
-      await createPermiso.mutateAsync(formData);
-      toast({ title: 'Permiso creado correctamente' });
+      if (editing) {
+        await updatePermiso.mutateAsync({ id: editing.id, data: formData });
+        toast({ title: 'Permiso actualizado' });
+      } else {
+        await createPermiso.mutateAsync(formData);
+        toast({ title: 'Permiso creado' });
+      }
       setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Ocurrió un error',
-        variant: 'destructive',
-      });
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo guardar el permiso', variant: 'destructive' });
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      user: '',
-      aula: '',
-      schedule: '',
-      is_active: true,
-    });
-  };
-
-  const getUsuarioNombre = (id: string) => {
-    const usuario = usuarios.find(u => u.id === id);
-    return usuario ? `${usuario.nombre} ${usuario.apellido}` : id;
-  };
-
-  const getAulaCodigo = (id: string) => {
-    const aula = aulas.find(a => a.id === id);
-    return aula ? aula.code : id;
-  };
-
-  const getHorarioDescripcion = (id: string) => {
-    const horario = horarios.find(h => h.id === id);
-    return horario ? `${horario.start_time} - ${horario.end_time}` : id;
+  const handleDelete = async (p: AccessPermission) => {
+    if (!confirm('¿Eliminar este permiso de acceso?')) return;
+    try {
+      await deletePermiso.mutateAsync(p.id);
+      toast({ title: 'Permiso eliminado' });
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
+    }
   };
 
   const columns = [
     {
       header: 'Usuario',
       accessor: (row: AccessPermission) => (
-        <div className="font-medium">{getUsuarioNombre(row.user)}</div>
+        <div>
+          <p className="font-medium">{row.user_nombre || '—'}</p>
+          <p className="text-xs text-slate-500">{row.user_email || row.user.slice(0, 8) + '...'}</p>
+        </div>
       ),
     },
     {
       header: 'Aula',
-      accessor: (row: AccessPermission) => getAulaCodigo(row.aula),
+      accessor: (row: AccessPermission) => (
+        <div>
+          <span className="font-mono font-semibold">{row.aula_code || '—'}</span>
+          {row.aula_description && <p className="text-xs text-slate-500">{row.aula_description}</p>}
+        </div>
+      ),
     },
     {
       header: 'Horario',
-      accessor: (row: AccessPermission) => getHorarioDescripcion(row.schedule),
+      accessor: (row: AccessPermission) => (
+        <span className="text-sm">{row.schedule_display || '—'}</span>
+      ),
     },
     {
       header: 'Estado',
@@ -98,113 +111,95 @@ export default function PermisosPage() {
         </Badge>
       ),
     },
+    {
+      header: 'Acciones',
+      accessor: (row: AccessPermission) => (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => openEdit(row)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(row)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
-    <RoleGuard allowedRoles={['admin', 'subadmin']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN']}>
       <AdminLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Permisos</h1>
-              <p className="text-slate-600 mt-1">Asignación de permisos de acceso</p>
+              <h1 className="text-3xl font-bold text-slate-900">Permisos de Acceso</h1>
+              <p className="text-slate-600 mt-1">Gestión de permisos usuario–aula–horario</p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Permiso
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Nuevo Permiso</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="usuario">Usuario</Label>
-                    <Select
-                      value={formData.user}
-                      onValueChange={(value) => setFormData({ ...formData, user: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar usuario" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {usuarios.map(usuario => (
-                          <SelectItem key={usuario.id} value={usuario.id}>
-                            {usuario.nombre} {usuario.apellido}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="aula">Aula</Label>
-                    <Select
-                      value={formData.aula}
-                      onValueChange={(value) => setFormData({ ...formData, aula: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar aula" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {aulas.map(aula => (
-                          <SelectItem key={aula.id} value={aula.id}>
-                            {aula.code} - {aula.description}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="horario">Horario</Label>
-                    <Select
-                      value={formData.schedule}
-                      onValueChange={(value) => setFormData({ ...formData, schedule: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar horario" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {horarios.map(horario => (
-                          <SelectItem key={horario.id} value={horario.id}>
-                            {horario.day_label || `${horario.start_time} - ${horario.end_time}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="activo"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="h-4 w-4"
-                    />
-                    <Label htmlFor="activo">Permiso activo</Label>
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" disabled={createPermiso.isPending}>
-                      {createPermiso.isPending ? 'Guardando...' : 'Guardar'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" /> Nuevo Permiso
+            </Button>
           </div>
 
-          <DataTable
-            data={permisos}
-            columns={columns}
-            isLoading={permisosLoading}
-            searchPlaceholder="Buscar permisos..."
-          />
+          <DataTable data={permisos} columns={columns} isLoading={isLoading} searchPlaceholder="Buscar permisos..." />
         </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editing ? 'Editar Permiso' : 'Nuevo Permiso de Acceso'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Usuario</Label>
+                <Select value={formData.user} onValueChange={v => setFormData({ ...formData, user: v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar usuario..." /></SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map(u => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.nombre} {u.apellido} — {u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Aula</Label>
+                <Select value={formData.aula} onValueChange={v => setFormData({ ...formData, aula: v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar aula..." /></SelectTrigger>
+                  <SelectContent>
+                    {aulas.filter(a => a.is_active).map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.code} — {a.description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Horario</Label>
+                <Select value={formData.schedule} onValueChange={v => setFormData({ ...formData, schedule: v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar horario..." /></SelectTrigger>
+                  <SelectContent>
+                    {horarios.map(h => (
+                      <SelectItem key={h.id} value={h.id}>
+                        {DIAS[h.day_of_week]} {h.start_time.slice(0, 5)}–{h.end_time.slice(0, 5)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="perm_active" checked={formData.is_active}
+                  onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="h-4 w-4" />
+                <Label htmlFor="perm_active">Permiso activo</Label>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </AdminLayout>
     </RoleGuard>
   );

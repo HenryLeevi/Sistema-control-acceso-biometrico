@@ -13,7 +13,7 @@ export default function ReportesPage() {
   const { data: reporte, isLoading } = useReporte();
 
   return (
-    <RoleGuard allowedRoles={['admin', 'subadmin']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN']}>
       <AdminLayout>
         <div className="space-y-6">
           <div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Role, AuthResponse } from './types';
+import { User, Role, AuthResponse, normalizeRole } from './types';
 import { apiClient, setTokens, clearTokens, getAccessToken } from './api-client';
 import { MockAPI } from './mock-data';
 
@@ -35,11 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (MOCK_MODE) {
             userData = await MockAPI.getMe();
           } else {
-            // GET /api/auth/me/ — returns user data matching backend fields
-            userData = await apiClient<User>('/auth/me/');
+            // GET /api/auth/me/ returns user data + roles
+            const meData = await apiClient<User & { roles?: string[] }>('/auth/me/');
+            // Normalize roles to uppercase
+            meData.roles = (meData.roles || []).map(normalizeRole);
+            userData = meData;
           }
           setUser(userData);
-          setRoles(userData.roles || []);
+          setRoles((userData.roles || []).map(normalizeRole));
         } catch (error) {
           clearTokens();
         }
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let response: AuthResponse;
 
       if (MOCK_MODE) {
-        console.log('[AUTH] Modo mock activo, usando datos de demostración');
+        console.log('[AUTH] Modo mock activo');
         response = await MockAPI.login(username, password);
       } else {
         console.log('[AUTH] Conectando con API real');
@@ -66,10 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
+      // Normalize roles to uppercase
+      const normalizedRoles = (response.roles || []).map(normalizeRole);
+
       setTokens(response.access, response.refresh);
-      setUser(response.user);
-      setRoles(response.roles);
-      console.log('[AUTH] Login exitoso:', response.user.username || response.user.email);
+      setUser({ ...response.user, roles: normalizedRoles });
+      setRoles(normalizedRoles);
+      console.log('[AUTH] Login exitoso:', response.user.username || response.user.email, '| roles:', normalizedRoles);
     } catch (error) {
       console.error('[AUTH] Error en login:', error);
       throw error;
@@ -82,8 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoles([]);
   };
 
+  // Case-insensitive role check — both 'admin' and 'ADMIN' work
   const hasRole = (role: Role) => {
-    return roles.includes(role);
+    return roles.map(r => r.toUpperCase()).includes(role.toUpperCase());
   };
 
   return (

@@ -1,231 +1,208 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/admin-layout';
 import { RoleGuard } from '@/components/role-guard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAlertas } from '@/lib/api-hooks';
-import { Alerta } from '@/lib/types';
-import { AlertTriangle, ShieldAlert, CheckCircle, Clock, Filter } from 'lucide-react';
+import { AccessEvent } from '@/lib/types';
+import {
+  CheckCircle2, XCircle, AlertTriangle, Search, Filter,
+  Fingerprint, Lock, Shield,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-const TIPO_LABELS: Record<string, string> = {
-  acceso_denegado: 'Acceso Denegado',
-  horario_inusual: 'Horario Inusual',
-  score_bajo: 'Score Bajo',
-  multiple_intentos: 'Múltiples Intentos',
+/* ── Display helpers ──────────────────────────────────────── */
+
+const METHOD_LABEL: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  FACE: { label: 'Facial', icon: <Fingerprint className="h-3.5 w-3.5" />, color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  PIN:  { label: 'PIN',    icon: <Lock className="h-3.5 w-3.5" />,        color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  MANUAL: { label: 'Manual', icon: <Shield className="h-3.5 w-3.5" />,   color: 'bg-amber-100 text-amber-700 border-amber-200' },
 };
 
-const TIPO_ICONS: Record<string, string> = {
-  acceso_denegado: '🚫',
-  horario_inusual: '🕐',
-  score_bajo: '📊',
-  multiple_intentos: '🔄',
+const RESULT_CFG: Record<string, { label: string; icon: React.ReactNode; rowBg: string; badge: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  SUCCESS: { label: 'Permitido', icon: <CheckCircle2 className="h-4 w-4 text-green-600" />, rowBg: '', badge: 'default' },
+  DENIED:  { label: 'Denegado', icon: <XCircle className="h-4 w-4 text-red-500" />,          rowBg: 'bg-red-50/40', badge: 'destructive' },
 };
 
-type FiltroEstado = 'todos' | 'nueva' | 'revisada' | 'resuelta';
+type FilterResult = 'all' | 'SUCCESS' | 'DENIED';
+type FilterMethod = 'all' | 'FACE' | 'PIN' | 'MANUAL';
 
 export default function AlertasPage() {
   const { data, isLoading } = useAlertas();
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
-  const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  const [filterResult, setFilterResult] = useState<FilterResult>('all');
+  const [filterMethod, setFilterMethod] = useState<FilterMethod>('all');
+  const [showAlertOnly, setShowAlertOnly] = useState(false);
 
-  const alertas = data?.results || [];
+  const allEvents: AccessEvent[] = data?.results || [];
 
-  const filtradas = alertas.filter(a => {
-    const estadoOk = filtroEstado === 'todos' || a.estado === filtroEstado;
-    const prioridadOk = filtrosPrioridad.length === 0 || filtrosPrioridad.includes(a.prioridad);
-    return estadoOk && prioridadOk;
-  });
+  /* Stats */
+  const totalHoy = allEvents.length;
+  const permitidos = allEvents.filter(e => e.result === 'SUCCESS').length;
+  const denegados = allEvents.filter(e => e.result === 'DENIED').length;
+  const alertas = allEvents.filter(e => e.alert_flag).length;
 
-  const nuevas = alertas.filter(a => a.estado === 'nueva').length;
-  const revisadas = alertas.filter(a => a.estado === 'revisada').length;
-  const resueltas = alertas.filter(a => a.estado === 'resuelta').length;
-
-  const getPrioridadColor = (p: string) => {
-    if (p === 'alta') return 'bg-red-100 text-red-700 border-red-200';
-    if (p === 'media') return 'bg-amber-100 text-amber-700 border-amber-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
-  };
-
-  const getEstadoColor = (e: string) => {
-    if (e === 'nueva') return 'bg-red-500';
-    if (e === 'revisada') return 'bg-amber-500';
-    return 'bg-green-500';
-  };
+  /* Filtered list */
+  const filtered = useMemo(() => {
+    return allEvents.filter(e => {
+      if (filterResult !== 'all' && e.result !== filterResult) return false;
+      if (filterMethod !== 'all' && e.method !== filterMethod) return false;
+      if (showAlertOnly && !e.alert_flag) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          e.aula?.toLowerCase().includes(q) ||
+          e.method?.toLowerCase().includes(q) ||
+          e.reason?.toLowerCase().includes(q) ||
+          e.result?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [allEvents, filterResult, filterMethod, showAlertOnly, search]);
 
   return (
-    <RoleGuard allowedRoles={['admin', 'subadmin', 'seguridad']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'SEGURIDAD']}>
       <AdminLayout>
         <div className="space-y-6">
+          {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Alertas</h1>
-            <p className="text-slate-600 mt-1">Eventos que requieren atención del equipo de seguridad</p>
+            <h1 className="text-3xl font-bold text-slate-900">Registro de Actividad</h1>
+            <p className="text-slate-600 mt-1">Todos los eventos del sistema — accesos, validaciones, alertas</p>
           </div>
 
-          {/* Summary cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <button
-              onClick={() => setFiltroEstado(filtroEstado === 'nueva' ? 'todos' : 'nueva')}
-              className={`text-left p-5 rounded-xl border-2 transition-all ${
-                filtroEstado === 'nueva'
-                  ? 'border-red-400 bg-red-50 shadow-md shadow-red-100'
-                  : 'border-red-200 bg-red-50 hover:border-red-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <ShieldAlert className="h-5 w-5 text-red-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-red-600 font-medium uppercase tracking-wide">Nuevas</p>
-                  <p className="text-3xl font-bold text-red-900">{nuevas}</p>
-                </div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total eventos', value: totalHoy, color: 'text-slate-900', bg: 'bg-slate-50 border-slate-200' },
+              { label: 'Permitidos', value: permitidos, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+              { label: 'Denegados', value: denegados, color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+              { label: 'Alertas', value: alertas, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+            ].map(stat => (
+              <div key={stat.label} className={`p-4 rounded-xl border ${stat.bg}`}>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{stat.label}</p>
+                <p className={`text-3xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                <p className="text-xs text-red-600">Requieren atención inmediata</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setFiltroEstado(filtroEstado === 'revisada' ? 'todos' : 'revisada')}
-              className={`text-left p-5 rounded-xl border-2 transition-all ${
-                filtroEstado === 'revisada'
-                  ? 'border-amber-400 bg-amber-50 shadow-md shadow-amber-100'
-                  : 'border-amber-200 bg-amber-50 hover:border-amber-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">En Revisión</p>
-                  <p className="text-3xl font-bold text-amber-900">{revisadas}</p>
-                </div>
-              </div>
-              <p className="text-xs text-amber-600">En proceso de investigación</p>
-            </button>
-
-            <button
-              onClick={() => setFiltroEstado(filtroEstado === 'resuelta' ? 'todos' : 'resuelta')}
-              className={`text-left p-5 rounded-xl border-2 transition-all ${
-                filtroEstado === 'resuelta'
-                  ? 'border-green-400 bg-green-50 shadow-md shadow-green-100'
-                  : 'border-green-200 bg-green-50 hover:border-green-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-green-600 font-medium uppercase tracking-wide">Resueltas</p>
-                  <p className="text-3xl font-bold text-green-900">{resueltas}</p>
-                </div>
-              </div>
-              <p className="text-xs text-green-600">Gestionadas correctamente</p>
-            </button>
+            ))}
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-sm text-slate-500">
-              <Filter className="h-4 w-4" />
-              <span>Prioridad:</span>
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por aula, método, motivo..."
+                className="pl-9"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
             </div>
-            {['alta', 'media', 'baja'].map(p => (
-              <button
-                key={p}
-                onClick={() => setFiltrosPrioridad(prev =>
-                  prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
-                )}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  filtrosPrioridad.includes(p)
-                    ? getPrioridadColor(p) + ' opacity-100'
-                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                }`}
-              >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
-            {(filtroEstado !== 'todos' || filtrosPrioridad.length > 0) && (
-              <button
-                onClick={() => { setFiltroEstado('todos'); setFiltrosPrioridad([]); }}
-                className="text-xs text-slate-400 hover:text-slate-600 underline ml-1"
-              >
-                Limpiar filtros
-              </button>
-            )}
-          </div>
 
-          {/* Alerts list */}
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : filtradas.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">
-              <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-slate-300" />
-              <p>No hay alertas con los filtros seleccionados</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filtradas.map((alerta) => (
-                <div
-                  key={alerta.id}
-                  className={`p-4 rounded-xl border transition-all hover:shadow-md bg-white ${
-                    alerta.estado === 'nueva' ? 'border-red-200' :
-                    alerta.estado === 'revisada' ? 'border-amber-200' : 'border-slate-200'
+            {/* Result filter */}
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+              {(['all', 'SUCCESS', 'DENIED'] as FilterResult[]).map(r => (
+                <button
+                  key={r}
+                  onClick={() => setFilterResult(r)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    filterResult === r ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      {/* Estado indicator */}
-                      <div className="flex-shrink-0 mt-1">
-                        <div className={`h-2.5 w-2.5 rounded-full ${getEstadoColor(alerta.estado)} ${alerta.estado === 'nueva' ? 'animate-pulse' : ''}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-slate-900">
-                            {TIPO_ICONS[alerta.tipo]} {TIPO_LABELS[alerta.tipo] || alerta.tipo}
+                  {r === 'all' ? 'Todos' : r === 'SUCCESS' ? 'Permitidos' : 'Denegados'}
+                </button>
+              ))}
+            </div>
+
+            {/* Method filter */}
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+              {(['all', 'FACE', 'PIN', 'MANUAL'] as FilterMethod[]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setFilterMethod(m)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    filterMethod === m ? 'bg-white shadow text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {m === 'all' ? 'Método' : METHOD_LABEL[m]?.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Alert toggle */}
+            <button
+              onClick={() => setShowAlertOnly(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                showAlertOnly
+                  ? 'bg-amber-100 border-amber-400 text-amber-800'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
+              }`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Solo alertas
+            </button>
+          </div>
+
+          {/* Event list */}
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-slate-400">
+              <Filter className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No hay eventos con los filtros seleccionados</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filtered.map((evento: AccessEvent) => {
+                const resultCfg = RESULT_CFG[evento.result] ?? RESULT_CFG.DENIED;
+                const methodCfg = METHOD_LABEL[evento.method] ?? { label: evento.method, icon: null, color: '' };
+                return (
+                  <div
+                    key={evento.id}
+                    className={`rounded-xl border border-slate-200 p-3 flex items-center gap-4 ${resultCfg.rowBg} ${
+                      evento.alert_flag ? 'ring-1 ring-amber-400' : ''
+                    }`}
+                  >
+                    {/* Result icon */}
+                    <div className="flex-shrink-0">{resultCfg.icon}</div>
+
+                    {/* Main info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={resultCfg.badge} className="text-xs">
+                          {resultCfg.label}
+                        </Badge>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${methodCfg.color}`}>
+                          {methodCfg.icon} {methodCfg.label}
+                        </span>
+                        {evento.alert_flag && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300 text-xs font-medium">
+                            <AlertTriangle className="h-3 w-3" /> Alerta
                           </span>
-                          <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${getPrioridadColor(alerta.prioridad)}`}>
-                            {alerta.prioridad}
-                          </span>
-                          <Badge variant={alerta.estado === 'nueva' ? 'default' : 'outline'} className="text-xs">
-                            {alerta.estado}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">Evento #{alerta.evento_id}</p>
-                        {alerta.revisada_por && (
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            Revisada por: <span className="font-medium text-slate-600">{alerta.revisada_por}</span>
-                            {alerta.notas && <span className="text-slate-400"> · {alerta.notas}</span>}
-                          </p>
                         )}
+                        <span className="text-xs text-slate-500 font-mono">Aula: {evento.aula?.slice(0, 8) || '—'}</span>
                       </div>
+                      {evento.reason && (
+                        <p className="text-xs text-slate-500 mt-0.5 truncate">{evento.reason}</p>
+                      )}
                     </div>
 
-                    {/* Actions */}
-                    {alerta.estado === 'nueva' && (
-                      <div className="flex gap-2 flex-shrink-0">
-                        <Button size="sm" variant="outline" className="text-xs h-8">
-                          Revisar
-                        </Button>
-                      </div>
-                    )}
-                    {alerta.estado === 'revisada' && (
-                      <Button size="sm" variant="outline" className="text-xs h-8 text-green-600 border-green-300 hover:bg-green-50 flex-shrink-0">
-                        Resolver
-                      </Button>
-                    )}
+                    {/* Timestamp */}
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-slate-500">
+                        {format(new Date(evento.timestamp), 'dd MMM HH:mm', { locale: es })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
