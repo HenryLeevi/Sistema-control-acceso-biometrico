@@ -35,10 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (MOCK_MODE) {
             userData = await MockAPI.getMe();
           } else {
-            userData = await apiClient<User>('/auth/me');
+            // GET /api/auth/me/ — returns user data matching backend fields
+            userData = await apiClient<User>('/auth/me/');
           }
           setUser(userData);
-          setRoles(userData.roles);
+          setRoles(userData.roles || []);
         } catch (error) {
           clearTokens();
         }
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         response = await MockAPI.login(username, password);
       } else {
         console.log('[AUTH] Conectando con API real');
-        response = await apiClient<AuthResponse>('/auth/login', {
+        response = await apiClient<AuthResponse>('/auth/login/', {
           method: 'POST',
           body: JSON.stringify({ username, password }),
           skipAuth: true,
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokens(response.access, response.refresh);
       setUser(response.user);
       setRoles(response.roles);
-      console.log('[AUTH] Login exitoso:', response.user.username);
+      console.log('[AUTH] Login exitoso:', response.user.username || response.user.email);
     } catch (error) {
       console.error('[AUTH] Error en login:', error);
       throw error;

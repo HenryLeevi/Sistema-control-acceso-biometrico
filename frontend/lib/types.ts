@@ -1,68 +1,66 @@
+// ─────────────────────────────────────────
+// types.ts — Matches backend serializer field names (English)
+// UI labels remain in Spanish — these are data types, not display labels.
+// ─────────────────────────────────────────
+
 export type Role = 'admin' | 'subadmin' | 'docente' | 'seguridad';
 
 export interface User {
   id: string;
-  username: string;
   email: string;
   nombre: string;
   apellido: string;
-  activo: boolean;
-  roles: Role[];
-  fecha_creacion: string;
-  ultima_actualizacion: string;
-  biometria_enrolada: boolean;
+  dui?: string;
+  fecha_nacimiento?: string;
+  residencia?: string;
+  is_active: boolean;
+  created_at: string;
+  // Computed by frontend or login response — not in UserSerializer
+  username?: string;
+  roles?: Role[];
 }
 
 export interface Aula {
   id: string;
-  codigo: string;
-  descripcion: string;
-  activo: boolean;
-  capacidad?: number;
-  edificio?: string;
+  code: string;
+  description: string;
+  is_active: boolean;
+  desired_state?: string;
+  actual_state?: string;
 }
 
-export interface Horario {
+export interface Schedule {
   id: string;
-  dia_semana: number;
-  hora_inicio: string;
-  hora_fin: string;
-  descripcion?: string;
+  day_of_week: number;
+  day_label?: string;
+  start_time: string;
+  end_time: string;
 }
 
-export interface Permiso {
+export interface AccessPermission {
   id: string;
-  usuario_id: string;
-  usuario?: User;
-  aula_id: string;
-  aula?: Aula;
-  horario_id: string;
-  horario?: Horario;
-  activo: boolean;
-  fecha_inicio?: string;
-  fecha_fin?: string;
+  user: string;   // UUID
+  aula: string;    // UUID
+  schedule: string; // UUID
+  is_active: boolean;
 }
 
-export interface Evento {
+export interface AccessEvent {
   id: string;
-  fecha_hora: string;
-  usuario_id: string;
-  usuario?: User;
-  aula_id: string;
-  aula?: Aula;
-  metodo: 'facial' | 'otp' | 'manual';
-  resultado: 'permitido' | 'denegado';
-  motivo?: string;
-  score?: number;
-  alerta: boolean;
-  imagen_captura?: string;
-  metadata?: Record<string, any>;
+  timestamp: string;
+  user: string;     // UUID
+  aula: string;     // UUID
+  device?: string;  // UUID
+  method: 'FACE' | 'PIN' | 'MANUAL';
+  result: 'SUCCESS' | 'DENIED';
+  reason?: string;
+  alert_flag: boolean;
+  correlation_id?: string;
 }
 
 export interface Alerta {
   id: string;
   evento_id: string;
-  evento?: Evento;
   tipo: 'acceso_denegado' | 'horario_inusual' | 'score_bajo' | 'multiple_intentos';
   estado: 'nueva' | 'revisada' | 'resuelta';
   prioridad: 'baja' | 'media' | 'alta';

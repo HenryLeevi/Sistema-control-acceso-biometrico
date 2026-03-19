@@ -14,6 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth-context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { AccessEvent } from '@/lib/types';
+
+// Helper: translate backend enum values to Spanish labels
+const metodLabel = (m: string) => ({ FACE: 'Facial', PIN: 'PIN', MANUAL: 'Manual' }[m] || m);
+const resultLabel = (r: string) => ({ SUCCESS: 'Permitido', DENIED: 'Denegado' }[r] || r);
 
 // ------------------------
 // Dashboard para Admin/Subadmin - vista completa con KPIs
@@ -21,7 +26,8 @@ import { es } from 'date-fns/locale';
 function AdminDashboard() {
   const { data: kpiData, isLoading: kpiLoading } = useKPIData();
   const { data: alertasData } = useAlertas();
-  const alertasRecientes = alertasData?.results.slice(0, 5) || [];
+  // alertas now returns AccessEvent[] with alert_flag=true
+  const alertasRecientes = (alertasData?.results || []).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -87,19 +93,20 @@ function AdminDashboard() {
             <div className="text-center py-8 text-slate-500">No hay alertas recientes</div>
           ) : (
             <div className="space-y-3">
-              {alertasRecientes.map((alerta) => (
+              {alertasRecientes.map((alerta: AccessEvent) => (
                 <div key={alerta.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 transition-colors">
                   <div className="flex items-center space-x-3">
                     <div className="h-2 w-2 rounded-full bg-red-500" />
                     <div>
-                      <p className="font-medium text-sm text-slate-900">{alerta.tipo.replace(/_/g, ' ').toUpperCase()}</p>
-                      <p className="text-xs text-slate-500">Evento #{alerta.evento_id}</p>
+                      <p className="font-medium text-sm text-slate-900">
+                        {alerta.result === 'DENIED' ? 'ACCESO DENEGADO' : 'ALERTA'}
+                      </p>
+                      <p className="text-xs text-slate-500">{metodLabel(alerta.method)} · {alerta.reason || 'Sin detalle'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={alerta.prioridad === 'alta' ? 'destructive' : 'secondary'}>{alerta.prioridad}</Badge>
-                    <Badge variant={alerta.estado === 'nueva' ? 'default' : 'outline'}>{alerta.estado}</Badge>
-                  </div>
+                  <Badge variant="destructive">
+                    {resultLabel(alerta.result)}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -122,9 +129,7 @@ function SeguridadDashboard() {
   const eventos = eventosData?.results || [];
   const usuarios = usuariosData?.results || [];
 
-  const alertasNuevas = alertas.filter(a => a.estado === 'nueva');
-  const eventosDenegados = eventos.filter(e => e.resultado === 'denegado');
-  const usuariosSinBiometria = usuarios.filter(u => !u.biometria_enrolada && u.activo);
+  const eventosDenegados = eventos.filter((e: AccessEvent) => e.result === 'DENIED');
 
   return (
     <div className="space-y-6">
@@ -141,7 +146,7 @@ function SeguridadDashboard() {
           </div>
           <div>
             <p className="text-sm text-red-700 font-medium">Alertas Activas</p>
-            <p className="text-3xl font-bold text-red-900">{alertasNuevas.length}</p>
+            <p className="text-3xl font-bold text-red-900">{alertas.length}</p>
           </div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-center gap-4">
@@ -158,8 +163,8 @@ function SeguridadDashboard() {
             <UserX className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-sm text-blue-700 font-medium">Sin Biometría</p>
-            <p className="text-3xl font-bold text-blue-900">{usuariosSinBiometria.length}</p>
+            <p className="text-sm text-blue-700 font-medium">Usuarios</p>
+            <p className="text-3xl font-bold text-blue-900">{usuarios.length}</p>
           </div>
         </div>
       </div>
@@ -174,20 +179,22 @@ function SeguridadDashboard() {
         </CardHeader>
         <CardContent>
           {alertasLoading ? <Skeleton className="h-32" /> :
-            alertasNuevas.length === 0 ? (
+            alertas.length === 0 ? (
               <div className="text-center py-6 text-slate-500">Sin alertas pendientes ✓</div>
             ) : (
               <div className="space-y-2">
-                {alertasNuevas.map(a => (
+                {alertas.map((a: AccessEvent) => (
                   <div key={a.id} className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{a.tipo.replace(/_/g, ' ').toUpperCase()}</p>
-                        <p className="text-xs text-slate-500">Evento #{a.evento_id}</p>
+                        <p className="text-sm font-medium text-slate-900">
+                          {a.result === 'DENIED' ? 'ACCESO DENEGADO' : 'ALERTA'}
+                        </p>
+                        <p className="text-xs text-slate-500">{metodLabel(a.method)} · {a.reason || ''}</p>
                       </div>
                     </div>
-                    <Badge variant={a.prioridad === 'alta' ? 'destructive' : 'secondary'}>{a.prioridad}</Badge>
+                    <Badge variant="destructive">{resultLabel(a.result)}</Badge>
                   </div>
                 ))}
               </div>
@@ -207,53 +214,28 @@ function SeguridadDashboard() {
         <CardContent>
           {eventosLoading ? <Skeleton className="h-32" /> : (
             <div className="space-y-2">
-              {eventos.slice(0, 5).map(e => (
+              {eventos.slice(0, 5).map((e: AccessEvent) => (
                 <div key={e.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                      e.resultado === 'permitido' ? 'bg-green-500' : 'bg-red-500'
+                      e.result === 'SUCCESS' ? 'bg-green-500' : 'bg-red-500'
                     }`}>
-                      {e.resultado === 'permitido' ? '✓' : '✗'}
+                      {e.result === 'SUCCESS' ? '✓' : '✗'}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Usuario #{e.usuario_id} — Aula #{e.aula_id}</p>
+                      <p className="text-sm font-medium">Evento {e.method}</p>
                       <p className="text-xs text-slate-500">
-                        {format(new Date(e.fecha_hora), 'dd/MM HH:mm', { locale: es })} · {e.metodo}
+                        {format(new Date(e.timestamp), 'dd/MM HH:mm', { locale: es })} · {metodLabel(e.method)}
                       </p>
                     </div>
                   </div>
-                  {e.alerta && <Badge variant="destructive" className="text-[10px]">Alerta</Badge>}
+                  {e.alert_flag && <Badge variant="destructive" className="text-[10px]">Alerta</Badge>}
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Usuarios sin biometría */}
-      {usuariosSinBiometria.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50/50">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <UserX className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-blue-900">Usuarios Pendientes de Enrolamiento</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {usuariosSinBiometria.map(u => (
-                <div key={u.id} className="flex items-center justify-between p-3 bg-white border border-blue-100 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">{u.nombre} {u.apellido}</p>
-                    <p className="text-xs text-slate-500">@{u.username} · {u.email}</p>
-                  </div>
-                  <Badge variant="outline" className="text-blue-600 border-blue-300">Sin biometría</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -268,7 +250,6 @@ export default function AdminDashboardPage() {
 
   // Docente tiene su propia vista importada como lazy redirect
   if (isDocente) {
-    // Render inline docente dashboard (import at top of file)
     return <DocenteRedirect />;
   }
 
@@ -281,7 +262,6 @@ export default function AdminDashboardPage() {
   );
 }
 
-// Redirige al docente a su dashboard sin cambiar URL
 function DocenteRedirect() {
   const router = useRouter();
   useEffect(() => {

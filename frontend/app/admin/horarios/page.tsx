@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHorarios, useCreateHorario, usePermisos, useUsuarios, useAulas } from '@/lib/api-hooks';
-import { Horario } from '@/lib/types';
+import { Schedule } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, LayoutGrid, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -75,10 +75,9 @@ export default function HorariosPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [formData, setFormData] = useState({
-    dia_semana: 1,
-    hora_inicio: '08:00',
-    hora_fin: '10:00',
-    descripcion: '',
+    day_of_week: 1,
+    start_time: '08:00',
+    end_time: '10:00',
   });
 
   const today = new Date().getDay(); // 0=Dom, 1=Lun...
@@ -95,7 +94,7 @@ export default function HorariosPage() {
       await createHorario.mutateAsync(formData);
       toast({ title: 'Horario creado correctamente' });
       setIsDialogOpen(false);
-      setFormData({ dia_semana: 1, hora_inicio: '08:00', hora_fin: '10:00', descripcion: '' });
+      setFormData({ day_of_week: 1, start_time: '08:00', end_time: '10:00' });
     } catch (error) {
       toast({ title: 'Error', description: error instanceof Error ? error.message : 'Ocurrió un error', variant: 'destructive' });
     }
@@ -103,7 +102,7 @@ export default function HorariosPage() {
 
   // Build enriched blocks for calendar
   const bloques = horarios.map((h, idx) => {
-    const permisosDeHorario = permisos.filter(p => p.horario_id === h.id);
+    const permisosDeHorario = permisos.filter(p => p.schedule === h.id);
     const color = BLOQUE_COLORS[idx % BLOQUE_COLORS.length];
     return { horario: h, permisos: permisosDeHorario, color };
   });
@@ -153,7 +152,7 @@ export default function HorariosPage() {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label>Día de la Semana</Label>
-                      <Select value={String(formData.dia_semana)} onValueChange={(v) => setFormData({ ...formData, dia_semana: parseInt(v) })}>
+                      <Select value={String(formData.day_of_week)} onValueChange={(v) => setFormData({ ...formData, day_of_week: parseInt(v) })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {DIAS_SEMANA_OPTIONS.map(d => (
@@ -165,16 +164,12 @@ export default function HorariosPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Hora Inicio</Label>
-                        <Input type="time" value={formData.hora_inicio} onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })} required />
+                        <Input type="time" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} required />
                       </div>
                       <div className="space-y-2">
                         <Label>Hora Fin</Label>
-                        <Input type="time" value={formData.hora_fin} onChange={(e) => setFormData({ ...formData, hora_fin: e.target.value })} required />
+                        <Input type="time" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} required />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Descripción (Opcional)</Label>
-                      <Input placeholder="Ej: Turno Mañana" value={formData.descripcion} onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} />
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
@@ -249,16 +244,16 @@ export default function HorariosPage() {
 
                 {/* Schedule blocks */}
                 {bloques.map(({ horario: h, permisos: ps, color }) => {
-                  const col = h.dia_semana; // 1=Lun → gridColumn 2
-                  const rowStart = gridRowForTime(h.hora_inicio);
-                  const span = gridSpanForDuration(h.hora_inicio, h.hora_fin);
+                  const col = h.day_of_week; // 1=Lun → gridColumn 2
+                  const rowStart = gridRowForTime(h.start_time);
+                  const span = gridSpanForDuration(h.start_time, h.end_time);
 
                   if (col > 6) return null; // No mostrar Dom en esta vista
 
-                  const permisosActivos = ps.filter(p => p.activo);
+                  const permisosActivos = ps.filter(p => p.is_active);
                   const aulasCubiertas = Array.from(new Set(permisosActivos.map(p => {
-                    const aula = aulas.find(a => a.id === p.aula_id);
-                    return aula?.codigo || p.aula_id;
+                    const aula = aulas.find(a => a.id === p.aula);
+                    return aula?.code || p.aula;
                   })));
 
                   return (
@@ -269,14 +264,14 @@ export default function HorariosPage() {
                         gridColumn: col + 1,
                         gridRow: `${rowStart} / span ${span}`,
                       }}
-                      title={`${h.descripcion || ''} · ${h.hora_inicio}–${h.hora_fin}`}
+                      title={`${h.day_label || ''} · ${h.start_time}–${h.end_time}`}
                     >
                       <p className={`text-xs font-bold leading-tight ${color.text}`}>
-                        {h.hora_inicio}–{h.hora_fin}
+                        {h.start_time}–{h.end_time}
                       </p>
-                      {h.descripcion && (
+                      {h.day_label && (
                         <p className={`text-[10px] leading-tight mt-0.5 ${color.text} opacity-80 truncate`}>
-                          {h.descripcion}
+                          {h.day_label}
                         </p>
                       )}
                       {aulasCubiertas.length > 0 && (
@@ -301,7 +296,7 @@ export default function HorariosPage() {
                 {bloques.slice(0, 6).map(({ horario: h, color }) => (
                   <div key={h.id} className="flex items-center gap-1.5 text-xs text-slate-600">
                     <div className={`h-2.5 w-2.5 rounded-sm ${color.dot}`} />
-                    {h.descripcion || `H${h.id}`}
+                    {h.day_label || `H${h.id}`}
                   </div>
                 ))}
               </div>
@@ -318,15 +313,15 @@ export default function HorariosPage() {
               ) : (
                 horarios.map((h, idx) => {
                   const color = BLOQUE_COLORS[idx % BLOQUE_COLORS.length];
-                  const permisosH = permisos.filter(p => p.horario_id === h.id && p.activo);
+                  const permisosH = permisos.filter(p => p.schedule === h.id && p.is_active);
                   return (
                     <div key={h.id} className={`flex items-center gap-4 p-4 rounded-xl border ${color.bg} ${color.border}`}>
                       <div className={`w-1 h-12 rounded-full ${color.dot}`} />
                       <div className="flex-1 min-w-0">
                         <p className={`font-semibold ${color.text}`}>
-                          {DIAS_COMPLETOS[h.dia_semana]} · {h.hora_inicio} – {h.hora_fin}
+                          {DIAS_COMPLETOS[h.day_of_week]} · {h.start_time} – {h.end_time}
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">{h.descripcion || 'Sin descripción'}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{h.day_label || 'Sin descripción'}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Badge variant="outline" className={`text-xs ${color.text} border-current`}>

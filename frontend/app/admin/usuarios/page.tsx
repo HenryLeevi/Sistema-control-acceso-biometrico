@@ -26,12 +26,11 @@ export default function UsuariosPage() {
   const [isBiometriaDialogOpen, setIsBiometriaDialogOpen] = useState(false);
   const [selectedUsuario, setSelectedUsuario] = useState<User | null>(null);
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     nombre: '',
     apellido: '',
-    activo: true,
-    roles: ['docente'] as Role[],
+    dui: '',
+    is_active: true,
   });
   const [biometriaFiles, setBiometriaFiles] = useState<FileList | null>(null);
 
@@ -88,12 +87,11 @@ export default function UsuariosPage() {
 
   const resetForm = () => {
     setFormData({
-      username: '',
       email: '',
       nombre: '',
       apellido: '',
-      activo: true,
-      roles: ['docente'],
+      dui: '',
+      is_active: true,
     });
     setSelectedUsuario(null);
   };
@@ -101,12 +99,11 @@ export default function UsuariosPage() {
   const handleEdit = (usuario: User) => {
     setSelectedUsuario(usuario);
     setFormData({
-      username: usuario.username,
       email: usuario.email,
       nombre: usuario.nombre,
       apellido: usuario.apellido,
-      activo: usuario.activo,
-      roles: usuario.roles,
+      dui: usuario.dui || '',
+      is_active: usuario.is_active,
     });
     setIsDialogOpen(true);
   };
@@ -122,45 +119,23 @@ export default function UsuariosPage() {
       accessor: (row: User) => (
         <div>
           <div className="font-medium">{row.nombre} {row.apellido}</div>
-          <div className="text-sm text-slate-500">@{row.username}</div>
+          <div className="text-sm text-slate-500">{row.email}</div>
         </div>
       ),
+    },
+    {
+      header: 'DUI',
+      accessor: (row: User) => row.dui || '—',
     },
     {
       header: 'Email',
       accessor: 'email' as keyof User,
     },
     {
-      header: 'Roles',
-      accessor: (row: User) => (
-        <div className="flex gap-1">
-          {row.roles.map(role => (
-            <Badge key={role} variant="secondary">{role}</Badge>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: 'Biometría',
-      accessor: (row: User) => (
-        row.biometria_enrolada ? (
-          <Badge variant="default" className="gap-1">
-            <CheckCircle className="h-3 w-3" />
-            Enrolada
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="gap-1">
-            <XCircle className="h-3 w-3" />
-            Pendiente
-          </Badge>
-        )
-      ),
-    },
-    {
       header: 'Estado',
       accessor: (row: User) => (
-        <Badge variant={row.activo ? 'default' : 'secondary'}>
-          {row.activo ? 'Activo' : 'Inactivo'}
+        <Badge variant={row.is_active ? 'default' : 'secondary'}>
+          {row.is_active ? 'Activo' : 'Inactivo'}
         </Badge>
       ),
     },
@@ -228,15 +203,6 @@ export default function UsuariosPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="username">Usuario</Label>
-                    <Input
-                      id="username"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
@@ -247,31 +213,23 @@ export default function UsuariosPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="rol">Rol Principal</Label>
-                    <Select
-                      value={formData.roles[0]}
-                      onValueChange={(value) => setFormData({ ...formData, roles: [value as Role] })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Administrador</SelectItem>
-                        <SelectItem value="subadmin">Subadministrador</SelectItem>
-                        <SelectItem value="docente">Docente</SelectItem>
-                        <SelectItem value="seguridad">Seguridad</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="dui">DUI (00000000-0)</Label>
+                    <Input
+                      id="dui"
+                      value={formData.dui}
+                      onChange={(e) => setFormData({ ...formData, dui: e.target.value })}
+                      placeholder="00000000-0"
+                    />
                   </div>
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      id="activo"
-                      checked={formData.activo}
-                      onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                       className="h-4 w-4"
                     />
-                    <Label htmlFor="activo">Usuario activo</Label>
+                    <Label htmlFor="is_active">Usuario activo</Label>
                   </div>
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

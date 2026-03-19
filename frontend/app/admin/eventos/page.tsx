@@ -7,16 +7,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEventos } from '@/lib/api-hooks';
-import { Evento } from '@/lib/types';
+import { AccessEvent } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Download, Search, Filter, Scan, Key, User, AlertCircle } from 'lucide-react';
 
 const METODO_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  facial:  { label: 'Facial',  color: 'bg-blue-100 text-blue-700 border-blue-200',   icon: Scan },
-  otp:     { label: 'OTP',     color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Key },
-  manual:  { label: 'Manual',  color: 'bg-slate-100 text-slate-700 border-slate-200',  icon: User },
+  FACE:    { label: 'Facial',  color: 'bg-blue-100 text-blue-700 border-blue-200',   icon: Scan },
+  PIN:     { label: 'PIN',     color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Key },
+  MANUAL:  { label: 'Manual',  color: 'bg-slate-100 text-slate-700 border-slate-200',  icon: User },
 };
+
+const resultLabel = (r: string) => ({ SUCCESS: 'Permitido', DENIED: 'Denegado' }[r] || r);
 
 export default function EventosPage() {
   const { data, isLoading } = useEventos();
@@ -26,24 +28,23 @@ export default function EventosPage() {
 
   const eventos = data?.results || [];
 
-  const filtrados = eventos.filter(e => {
-    const texto = `${e.usuario_id} ${e.aula_id} ${e.metodo} ${e.resultado}`.toLowerCase();
+  const filtrados = eventos.filter((e: AccessEvent) => {
+    const texto = `${e.user} ${e.aula} ${e.method} ${e.result}`.toLowerCase();
     const searchOk = !search || texto.includes(search.toLowerCase());
-    const metodoOk = filtroMetodo.length === 0 || filtroMetodo.includes(e.metodo);
-    const resultadoOk = filtroResultado === 'todos' || e.resultado === filtroResultado;
+    const metodoOk = filtroMetodo.length === 0 || filtroMetodo.includes(e.method);
+    const resultadoOk = filtroResultado === 'todos' || e.result === filtroResultado;
     return searchOk && metodoOk && resultadoOk;
   });
 
   const handleExportCSV = () => {
-    const headers = ['Fecha/Hora', 'Usuario', 'Aula', 'Método', 'Resultado', 'Motivo', 'Score'];
-    const rows = eventos.map(e => [
-      format(new Date(e.fecha_hora), 'dd/MM/yyyy HH:mm', { locale: es }),
-      e.usuario_id,
-      e.aula_id,
-      e.metodo,
-      e.resultado,
-      e.motivo || '',
-      e.score?.toFixed(2) || '',
+    const headers = ['Fecha/Hora', 'Usuario', 'Aula', 'Método', 'Resultado', 'Motivo'];
+    const rows = eventos.map((e: AccessEvent) => [
+      format(new Date(e.timestamp), 'dd/MM/yyyy HH:mm', { locale: es }),
+      e.user,
+      e.aula,
+      e.method,
+      e.result,
+      e.reason || '',
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -58,9 +59,9 @@ export default function EventosPage() {
   };
 
   // Summary stats
-  const totalPermitidos = eventos.filter(e => e.resultado === 'permitido').length;
-  const totalDenegados = eventos.filter(e => e.resultado === 'denegado').length;
-  const totalConAlerta = eventos.filter(e => e.alerta).length;
+  const totalPermitidos = eventos.filter((e: AccessEvent) => e.result === 'SUCCESS').length;
+  const totalDenegados = eventos.filter((e: AccessEvent) => e.result === 'DENIED').length;
+  const totalConAlerta = eventos.filter((e: AccessEvent) => e.alert_flag).length;
 
   return (
     <RoleGuard allowedRoles={['admin', 'subadmin', 'seguridad']}>
@@ -124,19 +125,19 @@ export default function EventosPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">Resultado:</span>
-              {['todos', 'permitido', 'denegado'].map(r => (
+              {[{ key: 'todos', label: 'Todos' }, { key: 'SUCCESS', label: 'Permitido' }, { key: 'DENIED', label: 'Denegado' }].map(r => (
                 <button
-                  key={r}
-                  onClick={() => setFiltroResultado(r)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all capitalize ${
-                    filtroResultado === r
-                      ? r === 'permitido' ? 'bg-green-100 text-green-700 border-green-300'
-                      : r === 'denegado' ? 'bg-red-100 text-red-700 border-red-300'
+                  key={r.key}
+                  onClick={() => setFiltroResultado(r.key)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                    filtroResultado === r.key
+                      ? r.key === 'SUCCESS' ? 'bg-green-100 text-green-700 border-green-300'
+                      : r.key === 'DENIED' ? 'bg-red-100 text-red-700 border-red-300'
                       : 'bg-slate-900 text-white border-slate-900'
                     : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
                   }`}
                 >
-                  {r === 'todos' ? 'Todos' : r}
+                  {r.label}
                 </button>
               ))}
             </div>
@@ -154,41 +155,38 @@ export default function EventosPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filtrados.map((evento) => {
-                const cfg = METODO_CONFIG[evento.metodo] || METODO_CONFIG.manual;
+              {filtrados.map((evento: AccessEvent) => {
+                const cfg = METODO_CONFIG[evento.method] || METODO_CONFIG.MANUAL;
                 const Icon = cfg.icon;
                 return (
                   <div
                     key={evento.id}
                     className={`flex items-center gap-4 p-4 rounded-xl border bg-white transition-all hover:shadow-sm ${
-                      evento.alerta ? 'border-red-200 bg-red-50/30' : 'border-slate-200'
+                      evento.alert_flag ? 'border-red-200 bg-red-50/30' : 'border-slate-200'
                     }`}
                   >
                     {/* Result indicator */}
                     <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white ${
-                      evento.resultado === 'permitido' ? 'bg-green-500' : 'bg-red-500'
+                      evento.result === 'SUCCESS' ? 'bg-green-500' : 'bg-red-500'
                     }`}>
-                      {evento.resultado === 'permitido' ? '✓' : '✗'}
+                      {evento.result === 'SUCCESS' ? '✓' : '✗'}
                     </div>
 
                     {/* Main info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-slate-900">
-                          Usuario #{evento.usuario_id}
+                          {resultLabel(evento.result)}
                         </span>
                         <span className="text-slate-400">→</span>
-                        <span className="text-sm font-medium text-slate-700">Aula #{evento.aula_id}</span>
-                        {evento.score && (
-                          <span className="text-xs text-slate-400">Score: {(evento.score * 100).toFixed(0)}%</span>
-                        )}
+                        <span className="text-sm font-medium text-slate-700">Aula {evento.aula}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-slate-400">
-                          {format(new Date(evento.fecha_hora), 'dd/MM/yyyy HH:mm', { locale: es })}
+                          {format(new Date(evento.timestamp), 'dd/MM/yyyy HH:mm', { locale: es })}
                         </span>
-                        {evento.motivo && (
-                          <span className="text-xs text-slate-500 truncate">· {evento.motivo}</span>
+                        {evento.reason && (
+                          <span className="text-xs text-slate-500 truncate">· {evento.reason}</span>
                         )}
                       </div>
                     </div>
@@ -198,7 +196,7 @@ export default function EventosPage() {
                       <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${cfg.color}`}>
                         <Icon className="h-3 w-3" /> {cfg.label}
                       </div>
-                      {evento.alerta && (
+                      {evento.alert_flag && (
                         <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
                           <AlertCircle className="h-3 w-3" /> Alerta
                         </div>

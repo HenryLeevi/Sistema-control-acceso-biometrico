@@ -73,8 +73,8 @@ export default function DocenteDashboard() {
 
   // Build schedule entries
   const clases = permisos.map((p, idx) => {
-    const horario = horarios.find(h => h.id === p.horario_id);
-    if (!horario || !p.activo) return null;
+    const horario = horarios.find(h => h.id === p.schedule);
+    if (!horario || !p.is_active) return null;
     const color = AULA_COLORS[idx % AULA_COLORS.length];
     return { horario, aula: p.aula, color };
   }).filter(Boolean) as { horario: any; aula: any; color: typeof AULA_COLORS[0] }[];
@@ -82,7 +82,7 @@ export default function DocenteDashboard() {
   // Group by day
   const clasesPorDia: Record<number, typeof clases> = {};
   clases.forEach(c => {
-    const dia = c.horario.dia_semana;
+    const dia = c.horario.day_of_week;
     if (!clasesPorDia[dia]) clasesPorDia[dia] = [];
     clasesPorDia[dia].push(c);
   });
@@ -140,24 +140,24 @@ export default function DocenteDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {[...clasesHoy].sort((a, b) => horaToMin(a.horario.hora_inicio) - horaToMin(b.horario.hora_inicio)).map((c, i) => (
+                      {[...clasesHoy].sort((a, b) => horaToMin(a.horario.start_time) - horaToMin(b.horario.start_time)).map((c, i) => (
                         <div key={i} className={`flex items-center gap-4 p-4 rounded-xl border-l-4 ${c.color.bg} ${c.color.border} border border-l-4`}>
                           <div className="text-center min-w-[56px]">
-                            <p className="text-xs font-mono font-bold text-slate-700">{c.horario.hora_inicio}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">{c.horario.hora_fin}</p>
+                            <p className="text-xs font-mono font-bold text-slate-700">{c.horario.start_time}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{c.horario.end_time}</p>
                           </div>
                           <div className="h-10 w-px bg-slate-200 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-slate-900">
-                              {c.aula?.descripcion || `Aula ${c.aula?.codigo}`}
+                              {c.aula?.description || `Aula ${c.aula?.code}`}
                             </p>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <MapPin className="h-3 w-3 text-slate-400" />
-                              <span className="text-xs text-slate-500">{c.aula?.codigo} · Edificio {c.aula?.edificio}</span>
+                              <span className="text-xs text-slate-500">{c.aula?.code}</span>
                             </div>
                           </div>
                           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${c.color.badge}`}>
-                            {c.horario.descripcion || c.horario.hora_inicio}
+                            {c.horario.day_label || c.horario.start_time}
                           </span>
                         </div>
                       ))}
@@ -178,7 +178,7 @@ export default function DocenteDashboard() {
                   <div className="grid grid-cols-5 gap-2">
                     {[1, 2, 3, 4, 5].map(dia => {
                       const clasesDelDia = (clasesPorDia[dia] || []).sort(
-                        (a, b) => horaToMin(a.horario.hora_inicio) - horaToMin(b.horario.hora_inicio)
+                        (a, b) => horaToMin(a.horario.start_time) - horaToMin(b.horario.start_time)
                       );
                       const isToday = dia === todayDia;
                       return (
@@ -196,8 +196,8 @@ export default function DocenteDashboard() {
                             ) : (
                               clasesDelDia.map((c, i) => (
                                 <div key={i} className={`rounded-lg p-1.5 border ${c.color.bg} ${c.color.border.replace('border-l-', 'border-')}`}>
-                                  <p className="text-[10px] font-bold text-slate-700 leading-tight">{c.aula?.codigo}</p>
-                                  <p className="text-[9px] text-slate-500 font-mono leading-tight">{c.horario.hora_inicio}</p>
+                                  <p className="text-[10px] font-bold text-slate-700 leading-tight">{c.aula?.code}</p>
+                                  <p className="text-[9px] text-slate-500 font-mono leading-tight">{c.horario.start_time}</p>
                                 </div>
                               ))
                             )}
@@ -212,7 +212,7 @@ export default function DocenteDashboard() {
                     {clases.map((c, i) => (
                       <div key={i} className="flex items-center gap-1.5">
                         <div className={`h-2 w-2 rounded-full ${c.color.dot}`} />
-                        <span className="text-xs text-slate-500">{c.aula?.codigo} — {c.aula?.descripcion}</span>
+                        <span className="text-xs text-slate-500">{c.aula?.code} — {c.aula?.description}</span>
                       </div>
                     ))}
                   </div>

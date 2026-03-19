@@ -7,17 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useEventos } from '@/lib/api-hooks';
+import { AccessEvent } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ArrowLeft, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const metodLabel = (m: string) => ({ FACE: 'Facial', PIN: 'PIN', MANUAL: 'Manual' }[m] || m);
+const resultLabel = (r: string) => ({ SUCCESS: 'Permitido', DENIED: 'Denegado' }[r] || r);
 
 export default function PWAHistorialPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { data, isLoading } = useEventos();
 
-  const eventos = data?.results.filter(e => e.usuario_id === user?.id).slice(0, 20) || [];
+  const eventos = data?.results.filter((e: AccessEvent) => e.user === user?.id).slice(0, 20) || [];
 
   return (
     <RoleGuard allowedRoles={['docente', 'admin', 'subadmin', 'seguridad']}>
@@ -54,56 +58,50 @@ export default function PWAHistorialPage() {
               </CardContent>
             </Card>
           ) : (
-            eventos.map((evento) => (
+            eventos.map((evento: AccessEvent) => (
               <Card key={evento.id} className="shadow-sm">
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        {evento.resultado === 'permitido' ? (
+                        {evento.result === 'SUCCESS' ? (
                           <CheckCircle className="h-5 w-5 text-green-600" />
                         ) : (
                           <XCircle className="h-5 w-5 text-red-600" />
                         )}
-                        <Badge variant={evento.resultado === 'permitido' ? 'default' : 'destructive'}>
-                          {evento.resultado}
+                        <Badge variant={evento.result === 'SUCCESS' ? 'default' : 'destructive'}>
+                          {resultLabel(evento.result)}
                         </Badge>
                       </div>
 
                       <div className="space-y-1 text-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Aula:</span>
-                          <span className="font-medium">{evento.aula_id}</span>
+                          <span className="font-medium">{evento.aula}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Método:</span>
                           <Badge variant="outline" className="text-xs">
-                            {evento.metodo}
+                            {metodLabel(evento.method)}
                           </Badge>
                         </div>
-                        {evento.score && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-600">Score:</span>
-                            <span className="font-medium">{(evento.score * 100).toFixed(0)}%</span>
-                          </div>
-                        )}
                         <div className="flex items-center justify-between">
                           <span className="text-slate-600">Fecha:</span>
                           <span className="text-xs">
-                            {format(new Date(evento.fecha_hora), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
+                            {format(new Date(evento.timestamp), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
                           </span>
                         </div>
                       </div>
 
-                      {evento.motivo && (
+                      {evento.reason && (
                         <div className="mt-2 pt-2 border-t border-slate-100">
                           <p className="text-xs text-slate-600">
-                            <span className="font-medium">Motivo:</span> {evento.motivo}
+                            <span className="font-medium">Motivo:</span> {evento.reason}
                           </p>
                         </div>
                       )}
 
-                      {evento.alerta && (
+                      {evento.alert_flag && (
                         <div className="mt-2">
                           <Badge variant="destructive" className="text-xs">
                             Alerta generada

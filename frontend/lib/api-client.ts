@@ -5,6 +5,14 @@ const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
   ? true
   : process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
+/** Ensures every path sent to Django has a trailing slash. */
+const normalizeUrl = (endpoint: string): string => {
+  if (endpoint.startsWith('http')) return endpoint;
+  const [path, query] = endpoint.split('?');
+  const normalizedPath = path.endsWith('/') ? path : `${path}/`;
+  return `${API_BASE_URL}${normalizedPath}${query ? `?${query}` : ''}`;
+};
+
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 
@@ -12,11 +20,17 @@ export const setTokens = (access: string, refresh: string) => {
   accessToken = access;
   refreshToken = refresh;
   if (typeof window !== 'undefined') {
+    localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
   }
 };
 
-export const getAccessToken = () => accessToken;
+export const getAccessToken = () => {
+  if (!accessToken && typeof window !== 'undefined') {
+    accessToken = localStorage.getItem('access_token');
+  }
+  return accessToken;
+};
 
 export const getRefreshToken = () => {
   if (!refreshToken && typeof window !== 'undefined') {
@@ -29,6 +43,7 @@ export const clearTokens = () => {
   accessToken = null;
   refreshToken = null;
   if (typeof window !== 'undefined') {
+    localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
   }
 };
@@ -38,7 +53,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
   if (!refresh) return null;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    const response = await fetch(normalizeUrl('/auth/refresh/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh }),
@@ -51,6 +66,9 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     const data = await response.json();
     accessToken = data.access;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('access_token', data.access);
+    }
     return data.access;
   } catch (error) {
     clearTokens();
@@ -75,11 +93,12 @@ export const apiClient = async <T>(
       ...(fetchOptions.headers as Record<string, string>),
     };
 
-    if (!skipAuth && accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
+    const token = getAccessToken();
+    if (!skipAuth && token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+    const url = normalizeUrl(endpoint);
 
     try {
       const response = await fetch(url, {
@@ -109,7 +128,7 @@ export const apiClient = async <T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP ${response.status}`);
+    throw new Error(errorData.message || errorData.detail || `HTTP ${response.status}`);
   }
 
   return response.json();
@@ -124,11 +143,12 @@ export const apiClientFormData = async <T>(
 
   const headers: Record<string, string> = {};
 
-  if (!skipAuth && accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  const token = getAccessToken();
+  if (!skipAuth && token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const url = normalizeUrl(endpoint);
 
   const response = await fetch(url, {
     ...fetchOptions,
@@ -158,7 +178,7 @@ export const apiClientFormData = async <T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `HTTP ${response.status}`);
+    throw new Error(errorData.message || errorData.detail || `HTTP ${response.status}`);
   }
 
   return response.json();

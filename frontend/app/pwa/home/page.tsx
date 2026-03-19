@@ -19,18 +19,13 @@ const AULA_COLORS: Record<string, { bg: string; border: string; text: string }> 
   'D-101': { bg: 'bg-rose-500/20',   border: 'border-rose-500/50',   text: 'text-rose-300' },
 };
 
-function getColorForAula(codigo: string) {
-  return AULA_COLORS[codigo] || { bg: 'bg-slate-500/20', border: 'border-slate-500/50', text: 'text-slate-300' };
+function getColorForAula(code: string) {
+  return AULA_COLORS[code] || { bg: 'bg-slate-500/20', border: 'border-slate-500/50', text: 'text-slate-300' };
 }
 
 function horaToMinutes(hora: string) {
   const [h, m] = hora.split(':').map(Number);
   return h * 60 + m;
-}
-
-function minutesToRow(minutos: number) {
-  // 07:00 = 420 min, cada fila = 60 min
-  return (minutos - 420) / 60;
 }
 
 export default function PWAHomePage() {
@@ -50,24 +45,24 @@ export default function PWAHomePage() {
   const todayDia = new Date().getDay(); // 0=Dom, 1=Lun...
   const todayIdx = todayDia === 0 ? 6 : todayDia - 1; // Lun=0
 
-  // Build schedule blocks
+  // Build schedule blocks using backend field names
   const bloques = permisos.map(p => {
-    const horario = horarios.find(h => h.id === p.horario_id);
+    const horario = horarios.find(h => h.id === p.schedule);
     if (!horario) return null;
-    const aulaCode = p.aula?.codigo || '';
+    const aulaCode = typeof p.aula === 'string' ? p.aula : '';
     const colors = getColorForAula(aulaCode);
     return {
-      dia: horario.dia_semana - 1, // 0=Lun
-      hora_inicio: horario.hora_inicio,
-      hora_fin: horario.hora_fin,
-      aula: p.aula,
+      dia: horario.day_of_week - 1, // 0=Lun
+      start_time: horario.start_time,
+      end_time: horario.end_time,
+      aulaCode,
       colors,
     };
   }).filter(Boolean) as {
     dia: number;
-    hora_inicio: string;
-    hora_fin: string;
-    aula: { codigo: string; descripcion: string } | undefined;
+    start_time: string;
+    end_time: string;
+    aulaCode: string;
     colors: { bg: string; border: string; text: string };
   }[];
 
@@ -90,7 +85,7 @@ export default function PWAHomePage() {
               <div>
                 <p className="text-sm font-semibold">{user?.nombre} {user?.apellido}</p>
                 <div className="flex gap-1 mt-0.5">
-                  {user?.roles.map(r => (
+                  {user?.roles?.map(r => (
                     <Badge key={r} variant="secondary" className="text-[10px] py-0 h-4">{r}</Badge>
                   ))}
                 </div>
@@ -124,12 +119,11 @@ export default function PWAHomePage() {
                   <div key={i} className={`rounded-xl p-3 border ${b.colors.bg} ${b.colors.border} flex items-center gap-3`}>
                     <div className={`flex-shrink-0 text-center ${b.colors.text}`}>
                       <Clock className="h-4 w-4 mx-auto mb-0.5" />
-                      <p className="text-xs font-mono font-bold">{b.hora_inicio}</p>
-                      <p className="text-xs font-mono text-slate-500">{b.hora_fin}</p>
+                      <p className="text-xs font-mono font-bold">{b.start_time}</p>
+                      <p className="text-xs font-mono text-slate-500">{b.end_time}</p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold ${b.colors.text}`}>{b.aula?.codigo}</p>
-                      <p className="text-xs text-slate-400 truncate">{b.aula?.descripcion}</p>
+                      <p className={`text-sm font-bold ${b.colors.text}`}>{b.aulaCode}</p>
                     </div>
                     <MapPin className="h-4 w-4 text-slate-600 flex-shrink-0" />
                   </div>
@@ -168,14 +162,8 @@ export default function PWAHomePage() {
                     </div>
                     {/* Day cells */}
                     {DIAS.map((_, colIdx) => {
-                      const bloque = bloques.find(b =>
-                        b.dia === colIdx &&
-                        horaToMinutes(b.hora_inicio) <= horaToMinutes(hora) &&
-                        horaToMinutes(b.hora_fin) > horaToMinutes(hora)
-                      );
-                      const isStart = bloque && b => b.hora_inicio === hora;
                       const bloqueStart = bloques.find(b =>
-                        b.dia === colIdx && b.hora_inicio === hora
+                        b.dia === colIdx && b.start_time === hora
                       );
 
                       return (
@@ -183,10 +171,10 @@ export default function PWAHomePage() {
                           {bloqueStart && (
                             <div className={`rounded-lg ${bloqueStart.colors.bg} ${bloqueStart.colors.border} border px-1.5 py-1 h-full`}>
                               <p className={`text-[10px] font-bold leading-tight ${bloqueStart.colors.text}`}>
-                                {bloqueStart.aula?.codigo}
+                                {bloqueStart.aulaCode}
                               </p>
                               <p className="text-[9px] text-slate-500 leading-tight">
-                                {bloqueStart.hora_inicio}–{bloqueStart.hora_fin}
+                                {bloqueStart.start_time}–{bloqueStart.end_time}
                               </p>
                             </div>
                           )}
