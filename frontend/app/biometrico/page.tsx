@@ -17,7 +17,7 @@ const COLORES_AULA: Record<string, string> = {
   'C-301': '#f59e0b',
 };
 
-export default function AccesoPage() {
+function BiometricoContent() {
   const { toast } = useToast();
 
   const [stage, setStage] = useState<AuthStage>('biometrico');
@@ -125,10 +125,9 @@ export default function AccesoPage() {
   const pinPad = ['1','2','3','4','5','6','7','8','9','DEL','0','OK'];
 
   return (
-    <RoleGuard allowedRoles={['BIOMETRICO']}>
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col overflow-hidden relative">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col overflow-hidden relative">
 
-        {/* Header */}
+      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-sm border-b border-white/10 z-10">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
@@ -431,7 +430,14 @@ export default function AccesoPage() {
           </div>
         </div>
       )}
-      </div>
+    </div>
+  );
+}
+
+export default function AccesoPage() {
+  return (
+    <RoleGuard allowedRoles={['BIOMETRICO']}>
+      <BiometricoContent />
     </RoleGuard>
   );
 }
