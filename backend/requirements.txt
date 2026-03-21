@@ -27,3 +27,6 @@ django-cors-headers==4.3.1
 
 # Filtering & Pagination
 django-filter==23.5
+
+# API Documentation (Swagger / OpenAPI)
+drf-spectacular==0.29.0

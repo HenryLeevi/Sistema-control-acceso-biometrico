@@ -6,16 +6,19 @@ ViewSets / APIViews:
   - ScheduleViewSet        : CRUD for time windows
   - AccessPermissionViewSet: CRUD for user-door-schedule grants
   - AccessEventViewSet     : Read-only audit log
-  - AccessValidateView     : POST /api/access/validate/ (structure + placeholder)
+  - AccessValidateView     : POST /api/access/validate/ (Raspberry Pi endpoint)
+  - KPIView                : GET  /api/access/kpi/
+  - ReporteView            : GET  /api/access/reports/summary/
 """
 
-from rest_framework import viewsets, status, mixins
+from rest_framework import viewsets, status, mixins, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
+from drf_spectacular.types import OpenApiTypes
 
 from .models import Aula, Schedule, AccessPermission, AccessEvent
 from .serializers import (
@@ -28,10 +31,40 @@ from .serializers import (
 from .services import AccessService, AccessValidationInput, AccessMethod
 
 
-class AulaViewSet(viewsets.ModelViewSet):
-    """CRUD for physical doors."""
+# ─────────────────────────────────────────
+# Aulas
+# ─────────────────────────────────────────
 
-    queryset = Aula.objects.all()
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Access"],
+        summary="Listar aulas",
+        description=(
+            "Retorna todas las aulas/puertas del sistema.\n\n"
+            "**Filtros:** `is_active`, `desired_state`, `actual_state`\n"
+            "**Búsqueda:** `search` busca por código o descripción"
+        ),
+        parameters=[
+            OpenApiParameter("search", OpenApiTypes.STR, description="Busca por código o descripción del aula"),
+            OpenApiParameter("is_active", OpenApiTypes.BOOL, description="Filtra aulas activas/inactivas"),
+            OpenApiParameter("desired_state", OpenApiTypes.STR, description="Estado deseado de la puerta"),
+            OpenApiParameter("actual_state", OpenApiTypes.STR, description="Estado actual de la puerta"),
+        ],
+    ),
+    create=extend_schema(
+        tags=["Access"],
+        summary="Crear aula",
+        description="Registra una nueva aula/puerta en el sistema.\n\n**Campos requeridos:** `code`, `description`",
+    ),
+    retrieve=extend_schema(tags=["Access"], summary="Obtener aula por ID"),
+    update=extend_schema(tags=["Access"], summary="Actualizar aula (completo)"),
+    partial_update=extend_schema(tags=["Access"], summary="Actualizar aula (parcial)"),
+    destroy=extend_schema(tags=["Access"], summary="Eliminar aula"),
+)
+class AulaViewSet(viewsets.ModelViewSet):
+    """CRUD for physical doors/classrooms."""
+
+    queryset = Aula.objects.all().order_by("code")
     serializer_class = AulaSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -39,18 +72,82 @@ class AulaViewSet(viewsets.ModelViewSet):
     search_fields = ["code", "description"]
 
 
+# ─────────────────────────────────────────
+# Horarios (Schedule)
+# ─────────────────────────────────────────
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Access"],
+        summary="Listar horarios",
+        description=(
+            "Retorna todos los bloques horarios del sistema.\n\n"
+            "**Filtro:** `day_of_week` (0=Lunes … 6=Domingo)"
+        ),
+        parameters=[
+            OpenApiParameter(
+                "day_of_week", OpenApiTypes.INT,
+                description="Día de la semana: 0=Lunes, 1=Martes, …, 6=Domingo"
+            ),
+        ],
+    ),
+    create=extend_schema(
+        tags=["Access"],
+        summary="Crear horario",
+        description=(
+            "Registra un bloque horario.\n\n"
+            "**Campos requeridos:** `day_of_week` (0–6), `start_time` (HH:MM), `end_time` (HH:MM)"
+        ),
+    ),
+    retrieve=extend_schema(tags=["Access"], summary="Obtener horario por ID"),
+    update=extend_schema(tags=["Access"], summary="Actualizar horario (completo)"),
+    partial_update=extend_schema(tags=["Access"], summary="Actualizar horario (parcial)"),
+    destroy=extend_schema(tags=["Access"], summary="Eliminar horario"),
+)
 class ScheduleViewSet(viewsets.ModelViewSet):
     """CRUD for weekly schedule time windows."""
 
-    queryset = Schedule.objects.all()
+    queryset = Schedule.objects.all().order_by("day_of_week", "start_time")
     serializer_class = ScheduleSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["day_of_week"]
 
 
+# ─────────────────────────────────────────
+# Permisos de acceso
+# ─────────────────────────────────────────
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Access"],
+        summary="Listar permisos de acceso",
+        description=(
+            "Retorna todas las asignaciones usuario→aula→horario.\n\n"
+            "Incluye campos enriquecidos: `user_nombre`, `user_email`, `aula_code`, `schedule_display`.\n\n"
+            "**Filtros:** `user` (UUID), `aula` (UUID), `is_active`"
+        ),
+        parameters=[
+            OpenApiParameter("user", OpenApiTypes.UUID, description="UUID del usuario"),
+            OpenApiParameter("aula", OpenApiTypes.UUID, description="UUID del aula"),
+            OpenApiParameter("is_active", OpenApiTypes.BOOL, description="Solo permisos activos/inactivos"),
+        ],
+    ),
+    create=extend_schema(
+        tags=["Access"],
+        summary="Crear permiso de acceso",
+        description=(
+            "Otorga acceso a un usuario para un aula en un horario específico.\n\n"
+            "**Body:** `{ \"user\": \"<uuid>\", \"aula\": \"<uuid>\", \"schedule\": \"<uuid>\", \"is_active\": true }`"
+        ),
+    ),
+    retrieve=extend_schema(tags=["Access"], summary="Obtener permiso por ID"),
+    update=extend_schema(tags=["Access"], summary="Actualizar permiso (completo)"),
+    partial_update=extend_schema(tags=["Access"], summary="Actualizar permiso (parcial)"),
+    destroy=extend_schema(tags=["Access"], summary="Revocar permiso de acceso"),
+)
 class AccessPermissionViewSet(viewsets.ModelViewSet):
-    """CRUD for user access grants."""
+    """CRUD for user access grants (user → aula → schedule)."""
 
     queryset = AccessPermission.objects.select_related("user", "aula", "schedule").all()
     serializer_class = AccessPermissionSerializer
@@ -59,15 +156,41 @@ class AccessPermissionViewSet(viewsets.ModelViewSet):
     filterset_fields = ["user", "aula", "is_active"]
 
 
+# ─────────────────────────────────────────
+# Eventos de acceso (read-only audit log)
+# ─────────────────────────────────────────
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Access"],
+        summary="Listar eventos de acceso",
+        description=(
+            "Retorna el registro de auditoría de todos los accesos al sistema. **Solo lectura.**\n\n"
+            "Ordenado por timestamp descendente (más reciente primero).\n\n"
+            "**Filtros:** `method` (FACE/PIN/MANUAL), `result` (SUCCESS/DENIED), `alert_flag`, `user`, `aula`, `device`\n"
+            "**Ordering:** `timestamp`"
+        ),
+        parameters=[
+            OpenApiParameter("method", OpenApiTypes.STR, description="Método: FACE, PIN o MANUAL"),
+            OpenApiParameter("result", OpenApiTypes.STR, description="Resultado: SUCCESS o DENIED"),
+            OpenApiParameter("alert_flag", OpenApiTypes.BOOL, description="Solo eventos marcados como alerta"),
+            OpenApiParameter("user", OpenApiTypes.UUID, description="UUID del usuario"),
+            OpenApiParameter("aula", OpenApiTypes.UUID, description="UUID del aula"),
+            OpenApiParameter("ordering", OpenApiTypes.STR, description="Ordena por: timestamp, -timestamp"),
+        ],
+    ),
+    retrieve=extend_schema(
+        tags=["Access"],
+        summary="Obtener evento por ID",
+        description="Retorna el detalle de un evento de acceso específico.",
+    ),
+)
 class AccessEventViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    """
-    Read-only audit log of access events.
-    Creation is handled exclusively by AccessService — never via this API.
-    """
+    """Read-only audit log. Creation is done exclusively by AccessService."""
 
     queryset = AccessEvent.objects.select_related("user", "aula", "device").all()
     serializer_class = AccessEventSerializer
@@ -78,22 +201,28 @@ class AccessEventViewSet(
     ordering = ["-timestamp"]
 
 
+# ─────────────────────────────────────────
+# Validación de acceso (Raspberry Pi)
+# ─────────────────────────────────────────
+
+@extend_schema(
+    tags=["Access"],
+    summary="Validar intento de acceso",
+    description=(
+        "**Endpoint principal del dispositivo Raspberry Pi.**\n\n"
+        "Recibe un intento de acceso biométrico o PIN y retorna si el acceso es permitido o denegado.\n\n"
+        "**Métodos:** `FACE` (facial), `PIN` (contingencia), `MANUAL` (apertura manual)\n\n"
+        "⚠️ Actualmente retorna `501 Not Implemented` — se implementará en Fase 2."
+    ),
+    request=AccessValidateSerializer,
+    responses={
+        200: OpenApiResponse(description="Acceso procesado — incluye `result`, `correlation_id`, `event_id`"),
+        400: OpenApiResponse(description="Datos de entrada inválidos"),
+        501: OpenApiResponse(description="Lógica de validación pendiente (Fase 2)"),
+    },
+)
 class AccessValidateView(APIView):
-    """
-    POST /api/access/validate/
-
-    The PRIMARY endpoint used by Raspberry Pi devices to validate an
-    access attempt and receive a door-open/close command.
-
-    Input schema:
-    {
-        "method":  "FACE | PIN | MANUAL",
-        "data":    "<opaque payload>",
-        "aula_id": "<UUID>"
-    }
-
-    Current status: SCAFFOLDED — returns 501 until Phase 2 implement AccessService.
-    """
+    """POST /api/access/validate/ — Used by Raspberry Pi devices."""
 
     permission_classes = [IsAuthenticated]
 
@@ -104,16 +233,12 @@ class AccessValidateView(APIView):
 
         validated = serializer.validated_data
 
-        # TODO (Phase 2): Extract device_id from JWT claims
-        # device_id = request.auth.get("device_id")
-
         try:
-            # Placeholder — AccessService.validate() raises NotImplementedError
             payload = AccessValidationInput(
                 method=AccessMethod(validated["method"]),
                 data=validated["data"],
                 aula_id=validated["aula_id"],
-                device_id=None,  # TODO: extract from JWT
+                device_id=None,
             )
             result = AccessService.validate(payload)
             return Response(
@@ -143,15 +268,26 @@ class AccessValidateView(APIView):
 
 
 # ─────────────────────────────────────────
-# Dashboard KPI: GET /api/access/kpi/
+# KPI Dashboard
 # ─────────────────────────────────────────
 
+@extend_schema(
+    tags=["Access"],
+    summary="KPIs del dashboard",
+    description=(
+        "Retorna métricas en tiempo real calculadas desde los eventos de acceso del día actual:\n\n"
+        "- `total_accesos_hoy`: total de eventos hoy\n"
+        "- `tasa_exito`: % de accesos permitidos\n"
+        "- `tasa_rechazo`: % de accesos denegados\n"
+        "- `alertas_activas`: eventos con `alert_flag=True` hoy\n"
+        "- `usuarios_activos`: total de usuarios activos en el sistema\n"
+        "- `accesos_por_hora`: distribución horaria del día\n"
+        "- `top_aulas`: top 5 aulas con más accesos"
+    ),
+    responses={200: OpenApiResponse(description="KPIs calculados exitosamente")},
+)
 class KPIView(APIView):
-    """
-    GET /api/access/kpi/
-
-    Computes real-time KPIs from the AccessEvent table.
-    """
+    """GET /api/access/kpi/ — Real-time dashboard metrics."""
 
     permission_classes = [IsAuthenticated]
 
@@ -202,15 +338,23 @@ class KPIView(APIView):
 
 
 # ─────────────────────────────────────────
-# Reporte: GET /api/access/reports/summary/
+# Reporte mensual
 # ─────────────────────────────────────────
 
+@extend_schema(
+    tags=["Access"],
+    summary="Resumen de reportes (últimos 30 días)",
+    description=(
+        "Genera un resumen estadístico de los accesos de los últimos 30 días:\n\n"
+        "- `total_accesos`: total de eventos en el período\n"
+        "- `accesos_permitidos` / `accesos_denegados`: desglose por resultado\n"
+        "- `accesos_por_dia`: serie temporal diaria\n"
+        "- `accesos_por_metodo`: desglose por método (FACE/PIN/MANUAL)"
+    ),
+    responses={200: OpenApiResponse(description="Reporte generado exitosamente")},
+)
 class ReporteView(APIView):
-    """
-    GET /api/access/reports/summary/
-
-    Returns a report summary of the last 30 days.
-    """
+    """GET /api/access/reports/summary/ — Last 30 days report."""
 
     permission_classes = [IsAuthenticated]
 
@@ -257,4 +401,3 @@ class ReporteView(APIView):
             "heatmap": [],
             "usuarios_mas_activos": [],
         })
-

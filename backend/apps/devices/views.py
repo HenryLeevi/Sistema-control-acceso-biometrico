@@ -7,43 +7,59 @@ ViewSets / APIViews:
 """
 
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
 from .models import Device
 from .serializers import DeviceSerializer
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Devices"],
+        summary="Listar dispositivos IoT",
+        description="Retorna la lista de todas las Raspberry Pi registradas en el sistema.",
+    ),
+    create=extend_schema(
+        tags=["Devices"],
+        summary="Registrar dispositivo",
+        description="Registra una nueva Raspberry Pi. El `device_id` debe ser único.",
+    ),
+    retrieve=extend_schema(tags=["Devices"], summary="Obtener dispositivo por ID"),
+    update=extend_schema(tags=["Devices"], summary="Actualizar dispositivo (completo)"),
+    partial_update=extend_schema(tags=["Devices"], summary="Actualizar dispositivo (parcial)"),
+    destroy=extend_schema(tags=["Devices"], summary="Eliminar dispositivo"),
+)
 class DeviceViewSet(viewsets.ModelViewSet):
     """CRUD for physical edge devices (Raspberry Pi)."""
 
-    queryset = Device.objects.all()
+    queryset = Device.objects.all().order_by("name")
     serializer_class = DeviceSerializer
     permission_classes = [IsAuthenticated]
 
 
+@extend_schema(
+    tags=["Devices"],
+    summary="Activar servomotor / Abrir puerta",
+    description=(
+        "**Endpoint de ejecución para el dispositivo (Raspberry Pi).**\n\n"
+        "Envía el comando de apertura o cierre a un aula específica.\n\n"
+        "⚠️ Actualmente retorna `501 Not Implemented` — se implementará en Fase 2 "
+        "con la integración física de la Raspberry Pi."
+    ),
+    responses={
+        200: OpenApiResponse(description="Comando recibido y procesado por el dispositivo"),
+        501: OpenApiResponse(description="Integración física pendiente (Fase 2)"),
+    },
+)
 class ServoActivateView(APIView):
     """
-    POST /api/servo/activate/
-
-    Stub endpoint for the Raspberry Pi to:
-      1. Receive a JWT-authenticated command
-      2. Execute servo/door action
-      3. Report back device status
-
-    IMPORTANT — Responsibilities of the device (NOT backend):
-      - No users, roles, permissions, or biometric logic
-      - Execution only: open/close the servomotor on command
-      - Update device.last_seen and device.status
-
-    TODO (Phase 2):
-      - Validate JWT and extract device identity
-      - Parse aula_id and desired action (OPEN / CLOSED)
-      - Actually execute servo command (Raspberry Pi-side implementation)
-      - Update Device.last_seen and Aula.actual_state
+    POST /api/devices/servo/activate/
+    
+    Stub endpoint for the Raspberry Pi to execute servo actions.
     """
 
     permission_classes = [IsAuthenticated]
@@ -57,7 +73,6 @@ class ServoActivateView(APIView):
             "action":    "OPEN | CLOSED"
         }
         """
-        # --- Placeholder implementation ---
         return Response(
             {
                 "status": "not_implemented",
