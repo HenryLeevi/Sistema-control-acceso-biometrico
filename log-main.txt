@@ -1,0 +1,15 @@
+﻿253bca9 Reorganize application routes by user roles
+47832cd feat: Initialize Next.js frontend with login, PWA home, and a Docente dashboard featuring schedules, OTP generation, and a guided tutorial, alongside a backend login test script.
+61a64e1 feat: Implement admin pages for managing access permissions, classrooms, and schedules with full CRUD functionality.
+0deae94 feat: Implement user management page with CRUD operations, role assignment, and biometric enrollment.
+de787f0 feat: Add user management page with full CRUD functionality, role assignment, and biometric enrollment.
+2ff3458 feat: Implement user management page with CRUD, role assignment, and biometric enrollment, and create an empty access page.
+b7c0545 Merge branch 'main' of https://github.com/HenryLeevi/Sistema-control-acceso-biometrico
+36d441e feat: add admin user management page with CRUD operations, role assignment, and biometric enrollment.
+53067c8 Merge branch 'main' of https://github.com/HenryLeevi/Sistema-control-acceso-biometrico
+d20dc53 Rename SEGURIDAD role to BIOMETRICO
+960bc49 Removes the Raspberry Pi servo controller module
+fb2ecda Replace SEGURIDAD role with BIOMETRICO
+d800b61 feat: Implement API client, React Query hooks, and backend endpoints for user and role management, including a user administration page.
+2845d5f Integrates drf-spectacular for API documentation
+b9da3ff Standardizes roles and implements full admin CRUD
