@@ -34,9 +34,9 @@ const allNavItems: NavItem[] = [
   { label: 'Panel Seguridad',  href: '/biometrico',         icon: LayoutDashboard, roles: ['BIOMETRICO'] },
   { label: 'Pantalla Acceso',  href: '/acceso',             icon: Fingerprint,     roles: ['BIOMETRICO'] },
   // Docente
-  { label: 'Mis Horarios',     href: '/docente/home',       icon: CalendarDays,    roles: ['DOCENTE'] },
-  { label: 'Generar OTP',      href: '/docente/otp',        icon: QrCode,          roles: ['DOCENTE'] },
-  { label: 'Mi Historial',     href: '/docente/historial',  icon: FileText,        roles: ['DOCENTE'] },
+  { label: 'Mis Horarios', href: '/docente/home', icon: CalendarDays, roles: ['DOCENTE'] },
+  { label: 'Generar OTP', href: '/docente/otp', icon: QrCode, roles: ['DOCENTE'] },
+  { label: 'Mi Historial', href: '/docente/historial', icon: FileText, roles: ['DOCENTE'] },
 ];
 
 

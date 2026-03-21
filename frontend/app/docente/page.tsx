@@ -16,12 +16,12 @@ const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado
 const DIAS_CORTO = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const AULA_COLORS = [
-  { bg: 'bg-blue-50',    border: 'border-l-blue-500',   badge: 'bg-blue-100 text-blue-800',   dot: 'bg-blue-500' },
-  { bg: 'bg-purple-50',  border: 'border-l-purple-500',  badge: 'bg-purple-100 text-purple-800', dot: 'bg-purple-500' },
+  { bg: 'bg-blue-50', border: 'border-l-blue-500', badge: 'bg-blue-100 text-blue-800', dot: 'bg-blue-500' },
+  { bg: 'bg-purple-50', border: 'border-l-purple-500', badge: 'bg-purple-100 text-purple-800', dot: 'bg-purple-500' },
   { bg: 'bg-emerald-50', border: 'border-l-emerald-500', badge: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
-  { bg: 'bg-amber-50',   border: 'border-l-amber-500',   badge: 'bg-amber-100 text-amber-800',   dot: 'bg-amber-500' },
-  { bg: 'bg-rose-50',    border: 'border-l-rose-500',    badge: 'bg-rose-100 text-rose-800',     dot: 'bg-rose-500' },
-  { bg: 'bg-cyan-50',    border: 'border-l-cyan-500',    badge: 'bg-cyan-100 text-cyan-800',     dot: 'bg-cyan-500' },
+  { bg: 'bg-amber-50', border: 'border-l-amber-500', badge: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
+  { bg: 'bg-rose-50', border: 'border-l-rose-500', badge: 'bg-rose-100 text-rose-800', dot: 'bg-rose-500' },
+  { bg: 'bg-cyan-50', border: 'border-l-cyan-500', badge: 'bg-cyan-100 text-cyan-800', dot: 'bg-cyan-500' },
 ];
 
 function horaToMin(h: string) {
