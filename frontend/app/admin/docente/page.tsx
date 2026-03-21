@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarDays, Clock, MapPin, QrCode, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { DocenteTutorial } from '@/components/docente-tutorial';
 
 const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_CORTO = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -95,11 +96,12 @@ export default function DocenteDashboard() {
 
   return (
     <RoleGuard allowedRoles={['DOCENTE']}>
+      <DocenteTutorial />
       <AdminLayout>
         <div className="space-y-6">
 
           {/* Header */}
-          <div className="flex items-start justify-between">
+          <div data-tour="user-profile" className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-900">
                 Bienvenido, {user?.nombre} 👋
@@ -118,7 +120,7 @@ export default function DocenteDashboard() {
             <div className="lg:col-span-2 space-y-6">
 
               {/* Today's classes */}
-              <Card>
+              <Card data-tour="today-summary">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -167,7 +169,7 @@ export default function DocenteDashboard() {
               </Card>
 
               {/* Weekly schedule */}
-              <Card>
+              <Card data-tour="weekly-schedule">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-slate-600" />
@@ -222,7 +224,7 @@ export default function DocenteDashboard() {
 
             {/* ===== OTP Column (1/3) ===== */}
             <div className="space-y-4">
-              <Card className="border-slate-200">
+              <Card data-tour="otp-section" className="border-slate-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <QrCode className="h-5 w-5 text-slate-600" />

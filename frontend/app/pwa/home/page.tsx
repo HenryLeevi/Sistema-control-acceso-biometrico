@@ -7,6 +7,7 @@ import { RoleGuard } from '@/components/role-guard';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { LogOut, QrCode, History, Clock, MapPin, ChevronRight } from 'lucide-react';
+import { DocenteTutorial } from '@/components/docente-tutorial';
 
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const HORAS = ['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
@@ -70,11 +71,12 @@ export default function PWAHomePage() {
   const clasesHoy = bloques.filter(b => b.dia === todayIdx);
 
   return (
-    <RoleGuard allowedRoles={['docente', 'admin', 'subadmin', 'seguridad']}>
+    <RoleGuard allowedRoles={['DOCENTE', 'ADMIN', 'SUBADMIN', 'BIOMETRICO']}>
+      <DocenteTutorial />
       <div className="min-h-screen bg-slate-950 text-white">
 
         {/* Header */}
-        <header className="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-sm border-b border-white/10">
+        <header data-tour="user-profile" className="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-sm border-b border-white/10">
           <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
@@ -100,7 +102,7 @@ export default function PWAHomePage() {
         <main className="max-w-lg mx-auto px-4 py-5 space-y-6 pb-24">
 
           {/* Today's summary */}
-          <div>
+          <div data-tour="today-summary">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold text-white">
                 Hoy — {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -133,7 +135,7 @@ export default function PWAHomePage() {
           </div>
 
           {/* Weekly schedule - Grid style */}
-          <div>
+          <div data-tour="weekly-schedule">
             <h2 className="text-base font-semibold mb-3">Horario Semanal</h2>
             <div className="bg-slate-900 rounded-2xl overflow-hidden border border-white/5">
               {/* Day headers */}
@@ -199,7 +201,7 @@ export default function PWAHomePage() {
         </main>
 
         {/* Bottom action bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-white/10 px-4 py-3">
+        <div data-tour="otp-section" className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-white/10 px-4 py-3">
           <div className="max-w-lg mx-auto flex gap-3">
             <button
               onClick={() => router.push('/pwa/historial')}
