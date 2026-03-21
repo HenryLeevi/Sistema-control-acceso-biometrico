@@ -38,6 +38,7 @@ export default function HorariosPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [itemToDelete, setItemToDelete] = useState<Schedule | null>(null);
 
   const horarios = data?.results || [];
   const isPending = createHorario.isPending || updateHorario.isPending;
@@ -74,11 +75,12 @@ export default function HorariosPage() {
     }
   };
 
-  const handleDelete = async (h: Schedule) => {
-    if (!confirm(`¿Eliminar el horario ${getDiaLabel(h.day_of_week)} ${h.start_time}–${h.end_time}?`)) return;
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
     try {
-      await deleteHorario.mutateAsync(h.id);
+      await deleteHorario.mutateAsync(itemToDelete.id);
       toast({ title: 'Horario eliminado' });
+      setItemToDelete(null);
     } catch {
       toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
     }
@@ -101,10 +103,10 @@ export default function HorariosPage() {
       header: 'Acciones',
       accessor: (row: Schedule) => (
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => openEdit(row)}>
+          <Button variant="outline" size="icon" onClick={() => openEdit(row)}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(row)}>
+          <Button variant="outline" size="icon" className="text-red-500" onClick={() => setItemToDelete(row)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -162,6 +164,26 @@ export default function HorariosPage() {
                 <Button type="submit" disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Confirmar eliminación</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-slate-600">
+                ¿Estás seguro de que deseas eliminar este horario (<strong>{getDiaLabel(itemToDelete?.day_of_week || 0)} {itemToDelete?.start_time} - {itemToDelete?.end_time}</strong>)?
+              </p>
+              <p className="text-xs text-red-500 mt-2">Esta acción no se puede deshacer.</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setItemToDelete(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDelete} disabled={deleteHorario.isPending}>
+                {deleteHorario.isPending ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </AdminLayout>
