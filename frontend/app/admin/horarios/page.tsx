@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useHorarios, useCreateHorario, useUpdateHorario, useDeleteHorario } from '@/lib/api-hooks';
 import { Schedule } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { formatTimeAMPM } from '@/lib/utils';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 const DIAS = [
@@ -93,11 +94,11 @@ export default function HorariosPage() {
     },
     {
       header: 'Hora inicio',
-      accessor: (row: Schedule) => <span className="font-mono">{row.start_time.slice(0, 5)}</span>,
+      accessor: (row: Schedule) => <span className="font-mono">{formatTimeAMPM(row.start_time)}</span>,
     },
     {
       header: 'Hora fin',
-      accessor: (row: Schedule) => <span className="font-mono">{row.end_time.slice(0, 5)}</span>,
+      accessor: (row: Schedule) => <span className="font-mono">{formatTimeAMPM(row.end_time)}</span>,
     },
     {
       header: 'Acciones',
@@ -149,12 +150,18 @@ export default function HorariosPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Hora inicio</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Hora inicio</Label>
+                    {formData.start_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.start_time)}</span>}
+                  </div>
                   <Input type="time" value={formData.start_time}
                     onChange={e => setFormData({ ...formData, start_time: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Hora fin</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Hora fin</Label>
+                    {formData.end_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.end_time)}</span>}
+                  </div>
                   <Input type="time" value={formData.end_time}
                     onChange={e => setFormData({ ...formData, end_time: e.target.value })} required />
                 </div>
@@ -174,7 +181,7 @@ export default function HorariosPage() {
             </DialogHeader>
             <div className="py-4">
               <p className="text-sm text-slate-600">
-                ¿Estás seguro de que deseas eliminar este horario (<strong>{getDiaLabel(itemToDelete?.day_of_week || 0)} {itemToDelete?.start_time} - {itemToDelete?.end_time}</strong>)?
+                ¿Estás seguro de que deseas eliminar este horario (<strong>{getDiaLabel(itemToDelete?.day_of_week || 0)} {formatTimeAMPM(itemToDelete?.start_time || '')} - {formatTimeAMPM(itemToDelete?.end_time || '')}</strong>)?
               </p>
               <p className="text-xs text-red-500 mt-2">Esta acción no se puede deshacer.</p>
             </div>

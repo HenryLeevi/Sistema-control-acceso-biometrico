@@ -22,21 +22,21 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   // Admin / Subadmin
-  { label: 'Dashboard',        href: '/admin',              icon: LayoutDashboard, roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Usuarios',         href: '/admin/usuarios',     icon: Users,           roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Aulas',            href: '/admin/aulas',        icon: DoorOpen,        roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Horarios',         href: '/admin/horarios',     icon: Clock,           roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Permisos',         href: '/admin/permisos',     icon: ShieldCheck,     roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Reportes',         href: '/admin/reportes',     icon: FileText,        roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Usuarios', href: '/admin/usuarios', icon: Users, roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Aulas', href: '/admin/aulas', icon: DoorOpen, roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Horarios', href: '/admin/horarios', icon: Clock, roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Permisos', href: '/admin/permisos', icon: ShieldCheck, roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Reportes', href: '/admin/reportes', icon: FileText, roles: ['ADMIN', 'SUBADMIN'] },
   // Biométrico (Seguridad)
-  { label: 'Panel Seguridad',  href: '/biometrico',         icon: LayoutDashboard, roles: ['BIOMETRICO'] },
-  { label: 'Eventos',          href: '/biometrico/eventos', icon: Fingerprint,     roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO'] },
-  { label: 'Alertas',          href: '/biometrico/alertas', icon: AlertTriangle,   roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO'] },
-  { label: 'Pantalla Acceso',  href: '/acceso',             icon: Fingerprint,     roles: ['BIOMETRICO'] },
+  { label: 'Panel Seguridad', href: '/biometrico', icon: LayoutDashboard, roles: ['BIOMETRICO'] },
+  { label: 'Eventos', href: '/biometrico/eventos', icon: Fingerprint, roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO'] },
+  { label: 'Alertas', href: '/biometrico/alertas', icon: AlertTriangle, roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO'] },
+  { label: 'Pantalla Acceso', href: '/acceso', icon: Fingerprint, roles: ['BIOMETRICO'] },
   // Docente
-  { label: 'Mis Horarios',     href: '/docente/home',       icon: CalendarDays,    roles: ['DOCENTE'] },
-  { label: 'Generar OTP',      href: '/docente/otp',        icon: QrCode,          roles: ['DOCENTE'] },
-  { label: 'Mi Historial',     href: '/docente/historial',  icon: FileText,        roles: ['DOCENTE'] },
+  { label: 'Mis Horarios', href: '/docente/home', icon: CalendarDays, roles: ['DOCENTE'] },
+  { label: 'Generar OTP', href: '/docente/otp', icon: QrCode, roles: ['DOCENTE'] },
+  { label: 'Mi Historial', href: '/docente/historial', icon: FileText, roles: ['DOCENTE'] },
 ];
 
 
