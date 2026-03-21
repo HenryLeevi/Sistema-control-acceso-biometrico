@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/admin-layout';
 import { RoleGuard } from '@/components/role-guard';
 import { KPICard } from '@/components/kpi-card';
@@ -246,12 +244,6 @@ function SeguridadDashboard() {
 export default function AdminDashboardPage() {
   const { hasRole } = useAuth();
   const isOnlyBiometrico = hasRole('BIOMETRICO') && !hasRole('ADMIN') && !hasRole('SUBADMIN') && !hasRole('DOCENTE');
-  const isDocente = hasRole('DOCENTE') && !hasRole('ADMIN') && !hasRole('SUBADMIN');
-
-  // Docente tiene su propia vista importada como lazy redirect
-  if (isDocente) {
-    return <DocenteRedirect />;
-  }
 
   return (
     <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'BIOMETRICO']}>
@@ -262,17 +254,4 @@ export default function AdminDashboardPage() {
   );
 }
 
-function DocenteRedirect() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace('/admin/docente');
-  }, [router]);
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-slate-900 border-r-transparent mb-3" />
-        <p className="text-sm text-slate-500">Cargando tu panel...</p>
-      </div>
-    </div>
-  );
-}
+

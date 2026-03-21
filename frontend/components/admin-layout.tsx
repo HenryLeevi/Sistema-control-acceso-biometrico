@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import {
   LayoutDashboard, Users, DoorOpen, Clock, ShieldCheck,
-  AlertTriangle, FileText, LogOut, Menu, X, Fingerprint
+  AlertTriangle, FileText, LogOut, Menu, X, Fingerprint, QrCode, CalendarDays
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

@@ -10,7 +10,7 @@ interface AuthContextType {
   roles: Role[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<{ roles: Role[] }>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
 }
@@ -76,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({ ...response.user, roles: normalizedRoles });
       setRoles(normalizedRoles);
       console.log('[AUTH] Login exitoso:', response.user.username || response.user.email, '| roles:', normalizedRoles);
+      return { roles: normalizedRoles };
     } catch (error) {
       console.error('[AUTH] Error en login:', error);
       throw error;
