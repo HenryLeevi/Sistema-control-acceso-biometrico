@@ -24,14 +24,14 @@ export default function PWAHistorialPage() {
   const eventos = data?.results.filter((e: AccessEvent) => e.user === user?.id).slice(0, 20) || [];
 
   return (
-    <RoleGuard allowedRoles={['docente', 'admin', 'subadmin', 'seguridad']}>
+    <RoleGuard allowedRoles={['DOCENTE', 'ADMIN', 'SUBADMIN', 'BIOMETRICO']}>
       <div className="min-h-screen bg-slate-50">
         <header className="bg-slate-900 text-white p-4 sticky top-0 z-10 shadow-lg">
           <div className="flex items-center max-w-md mx-auto">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/pwa/home')}
+              onClick={() => router.push('/docente/home')}
               className="text-white mr-3"
             >
               <ArrowLeft className="h-5 w-5" />

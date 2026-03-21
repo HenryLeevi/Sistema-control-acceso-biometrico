@@ -37,7 +37,7 @@ export default function PWAHomePage() {
 
   const handleLogout = () => {
     logout();
-    router.push('/pwa/login');
+    router.push('/login');
   };
 
   const permisos = permisosData?.results || [];
@@ -204,14 +204,14 @@ export default function PWAHomePage() {
         <div data-tour="otp-section" className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-white/10 px-4 py-3">
           <div className="max-w-lg mx-auto flex gap-3">
             <button
-              onClick={() => router.push('/pwa/historial')}
+              onClick={() => router.push('/docente/historial')}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-sm font-medium transition-all"
             >
               <History className="h-5 w-5" />
               Historial
             </button>
             <button
-              onClick={() => router.push('/pwa/otp')}
+              onClick={() => router.push('/docente/otp')}
               className="flex-2 flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-semibold transition-all active:scale-95 shadow-lg shadow-blue-500/30"
             >
               <QrCode className="h-5 w-5" />

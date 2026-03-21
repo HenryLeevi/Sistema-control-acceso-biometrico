@@ -74,13 +74,13 @@ export default function PWAOTPPage() {
   const progressPercentage = expiraEn ? (tiempoRestante / 300) * 100 : 0;
 
   return (
-    <RoleGuard allowedRoles={['docente', 'admin', 'subadmin', 'seguridad']}>
+    <RoleGuard allowedRoles={['DOCENTE', 'ADMIN', 'SUBADMIN']}>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
         <header className="p-4">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/pwa/home')}
+            onClick={() => router.push('/docente/home')}
             className="text-white"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
