@@ -84,7 +84,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <div className="h-8 w-8 rounded bg-slate-700 flex items-center justify-center">
               <Fingerprint className="h-5 w-5" />
             </div>
-            <span className="font-semibold text-sm">Control Accesos </span>
+            <span className="font-semibold text-sm">Control Accesos</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
