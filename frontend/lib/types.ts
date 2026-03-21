@@ -36,7 +36,8 @@ export interface UserRole {
   id: string;
   user: string;   // UUID
   role: string;   // UUID
-  role_name?: string;
+  role_name?: string;  // display label e.g. "Docente"
+  role_code?: string;  // raw code e.g. "DOCENTE"
 }
 
 export interface Aula {

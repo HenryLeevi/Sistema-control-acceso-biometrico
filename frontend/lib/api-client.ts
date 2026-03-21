@@ -128,8 +128,30 @@ export const apiClient = async <T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.detail || `HTTP ${response.status}`);
+
+    // Extract meaningful message from DRF error shapes:
+    //   { "detail": "..." }
+    //   { "message": "..." }
+    //   { "non_field_errors": ["..."] }
+    //   { "field_name": ["..."] }  ← most common for 400 validation errors
+    const extractDRFError = (data: Record<string, unknown>): string => {
+      if (typeof data.detail === 'string') return data.detail;
+      if (typeof data.message === 'string') return data.message;
+      for (const key of Object.keys(data)) {
+        const val = data[key];
+        const msg = Array.isArray(val) ? val[0] : val;
+        if (typeof msg === 'string' && msg) {
+          return key === 'non_field_errors' ? msg : `${key}: ${msg}`;
+        }
+      }
+      return `Error HTTP ${response.status}`;
+    };
+
+    throw new Error(extractDRFError(errorData));
   }
+
+  // 204 No Content (e.g. DELETE) — no body to parse
+  if (response.status === 204) return undefined as T;
 
   return response.json();
 };

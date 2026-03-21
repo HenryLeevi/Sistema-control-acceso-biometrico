@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin-layout';
 import { RoleGuard } from '@/components/role-guard';
 import { DataTable } from '@/components/data-table';
@@ -17,7 +17,7 @@ import {
 } from '@/lib/api-hooks';
 import { User, AppRole, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Upload, Shield, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Shield, X, Eye, EyeOff } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
@@ -45,34 +45,103 @@ export default function UsuariosPage() {
   const deleteUserRole = useDeleteUserRole();
   const { toast } = useToast();
 
+  // Track which user's roles we want to load for the edit dialog
+  const [editingUserId, setEditingUserId] = useState<string | undefined>(undefined);
+  const { data: userRolesData } = useUserRoles(editingUserId);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBioDialogOpen, setIsBioDialogOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [formData, setFormData] = useState(emptyForm);
   const [bioFiles, setBioFiles] = useState<FileList | null>(null);
   const [selectedForBio, setSelectedForBio] = useState<User | null>(null);
-  const [pendingRolesToAdd, setPendingRolesToAdd] = useState<string[]>([]);
+  const [pendingRoleToAdd, setPendingRoleToAdd] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const usuarios = data?.results || [];
   const roles = rolesData?.results || [];
   const isPending = createUsuario.isPending || updateUsuario.isPending;
 
+  // Pre-select the current role when editing a user
+  useEffect(() => {
+    console.log("Edit Effect Triggered", { editingUserId, userRolesData });
+    // Only try to set the role if we are editing a user and the data has loaded
+    if (editingUserId && userRolesData?.results) {
+      const firstAssignment = userRolesData.results[0];
+      console.log("First assignment:", firstAssignment);
+      if (firstAssignment?.role_code) {
+        setPendingRoleToAdd(firstAssignment.role_code);
+      } else if (firstAssignment?.role) {
+        // Fallback: if role_code isn't populated for some reason, we can find it in roles array
+        const matchedRole = roles.find(r => r.id === firstAssignment.role);
+        if (matchedRole) setPendingRoleToAdd(matchedRole.name);
+      }
+    }
+  }, [userRolesData, editingUserId, roles]);
+
   const openCreate = () => {
     setEditing(null);
     setFormData(emptyForm);
-    setPendingRolesToAdd([]);
+    setPendingRoleToAdd('');
+    setShowPassword(false);
     setIsDialogOpen(true);
   };
 
   const openEdit = (u: User) => {
     setEditing(u);
-    setFormData({ username: '', password: '', email: u.email, nombre: u.nombre, apellido: u.apellido, dui: u.dui || '', is_active: u.is_active });
-    setPendingRolesToAdd([]);
+    setEditingUserId(u.id);
+    setFormData({
+      username: u.username || '',
+      password: '',
+      email: u.email,
+      nombre: u.nombre,
+      apellido: u.apellido,
+      dui: u.dui || '',
+      is_active: u.is_active,
+    });
+    setPendingRoleToAdd(''); // will be overwritten by useEffect once userRoles loads
+    setShowPassword(false);
     setIsDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate: role is required when creating a new user
+    if (!editing && !pendingRoleToAdd) {
+      toast({
+        title: 'Rol requerido',
+        description: 'Debes asignar un rol al usuario antes de crearlo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate DUI format if provided
+    const duiValue = formData.dui.trim();
+    if (duiValue && !/^\d{8}-\d$/.test(duiValue)) {
+      toast({
+        title: 'Formato de DUI incorrecto',
+        description: 'El DUI debe tener el formato: 00000000-0 (8 dígitos, guión, 1 dígito). Ejemplo: 12345678-9',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate email uniqueness against already-loaded users
+    const emailNormalizado = formData.email.trim().toLowerCase();
+    const emailDuplicado = usuarios.some(
+      u => u.email.toLowerCase() === emailNormalizado && u.id !== editing?.id
+    );
+    if (emailDuplicado) {
+      toast({
+        title: 'Correo ya registrado',
+        description: `El email "${formData.email.trim()}" ya está en uso por otro usuario.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       let savedUser: User;
 
@@ -89,20 +158,33 @@ export default function UsuariosPage() {
         toast({ title: 'Usuario creado' });
       }
 
-      // Assign selected roles (for new users, attach all pending; for edits, add only new ones)
-      for (const roleName of pendingRolesToAdd) {
-        const role = roles.find(r => r.name === roleName);
-        if (role) {
+      // Handle Role updates!
+      if (pendingRoleToAdd) {
+        const newRoleObj = roles.find(r => r.name === pendingRoleToAdd);
+        if (newRoleObj) {
           try {
-            await createUserRole.mutateAsync({ user: savedUser.id, role: role.id });
-          } catch {
-            // Ignore duplicate role assignments
+            if (editing && userRolesData?.results?.length) {
+              const currentAssignment = userRolesData.results[0];
+              // If the role changed, delete the old one first
+              if (currentAssignment.role_code !== pendingRoleToAdd) {
+                await deleteUserRole.mutateAsync(currentAssignment.id);
+                await createUserRole.mutateAsync({ user: savedUser.id, role: newRoleObj.id });
+              }
+            } else {
+              // Creating new user or user had no role
+              await createUserRole.mutateAsync({ user: savedUser.id, role: newRoleObj.id });
+            }
+          } catch (roleErr) {
+            console.error("Error asignando rol:", roleErr);
+            const msg = roleErr instanceof Error ? roleErr.message : String(roleErr);
+            toast({ title: 'Aviso (Rol falló)', description: `Usuario guardado, pero falló el rol: ${msg}`, variant: 'destructive' });
           }
         }
       }
 
       setIsDialogOpen(false);
     } catch (err) {
+      console.error(err);
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'No se pudo guardar', variant: 'destructive' });
     }
   };
@@ -132,9 +214,8 @@ export default function UsuariosPage() {
   };
 
   const togglePendingRole = (roleName: string) => {
-    setPendingRolesToAdd(prev =>
-      prev.includes(roleName) ? prev.filter(r => r !== roleName) : [...prev, roleName]
-    );
+    // Single-role selection: clicking the same role deselects it
+    setPendingRoleToAdd(prev => (prev === roleName ? '' : roleName));
   };
 
   const columns = [
@@ -221,13 +302,24 @@ export default function UsuariosPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Contraseña</Label>
-                  <Input
-                    type="password"
-                    placeholder={editing ? '••••••••' : 'Contraseña'}
-                    value={formData.password}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    required={!editing}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={editing ? '••••••••' : 'Contraseña'}
+                      value={formData.password}
+                      onChange={e => setFormData({ ...formData, password: e.target.value })}
+                      required={!editing}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   {editing && <p className="text-xs text-slate-400">Dejar vacío para no cambiar</p>}
                 </div>
               </div>
@@ -245,14 +337,17 @@ export default function UsuariosPage() {
                 <Label htmlFor="usr_active">Usuario activo</Label>
               </div>
 
-              {/* Role assignment */}
+              {/* Role assignment — single role only */}
               <div className="space-y-2 border-t pt-3">
                 <Label className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Shield className="h-4 w-4" /> Asignar roles
+                  <Shield className="h-4 w-4" /> Asignar rol
+                  {!editing && <span className="text-red-500 ml-0.5">*</span>}
                 </Label>
                 <div className="flex flex-wrap gap-2">
                   {['ADMIN', 'SUBADMIN', 'DOCENTE', 'BIOMETRICO'].map(roleName => {
                     const selected = pendingRolesToAdd.includes(roleName);
+                  {['ADMIN', 'SUBADMIN', 'DOCENTE', 'SEGURIDAD'].map(roleName => {
+                    const selected = pendingRoleToAdd === roleName;
                     return (
                       <button
                         key={roleName}
@@ -270,11 +365,13 @@ export default function UsuariosPage() {
                     );
                   })}
                 </div>
-                {pendingRolesToAdd.length > 0 && (
+                {pendingRoleToAdd ? (
                   <p className="text-xs text-slate-500">
-                    Se asignarán: {pendingRolesToAdd.map(r => ROLE_LABELS[r]).join(', ')}
+                    Rol seleccionado: <span className="font-medium">{ROLE_LABELS[pendingRoleToAdd]}</span>
                   </p>
-                )}
+                ) : !editing ? (
+                  <p className="text-xs text-red-400">Selecciona un rol para continuar.</p>
+                ) : null}
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
