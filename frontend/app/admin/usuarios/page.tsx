@@ -23,7 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   SUBADMIN: 'Sub-Administrador',
   DOCENTE: 'Docente',
-  SEGURIDAD: 'Seguridad',
+  BIOMETRICO: 'Biométrico',
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -352,8 +352,6 @@ export default function UsuariosPage() {
                 </Label>
                 <div className="flex flex-wrap gap-2">
                   {['ADMIN', 'SUBADMIN', 'DOCENTE', 'BIOMETRICO'].map(roleName => {
-                    const selected = pendingRolesToAdd.includes(roleName);
-                  {['ADMIN', 'SUBADMIN', 'DOCENTE', 'SEGURIDAD'].map(roleName => {
                     const selected = pendingRoleToAdd === roleName;
                     return (
                       <button

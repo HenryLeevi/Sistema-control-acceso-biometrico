@@ -352,7 +352,7 @@ export default function AccesoPage() {
             >
               Verificar OTP
             </button>
-            <p className="text-xs text-gray-500">(Demo: usa "000000")</p>
+            <p className="text-xs text-gray-500">(Demo: usa &quot;000000&quot;)</p>
           </div>
         )}
 
