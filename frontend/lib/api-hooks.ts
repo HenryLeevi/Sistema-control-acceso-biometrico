@@ -99,7 +99,7 @@ export const useUserRoles = (userId?: string) => {
       const url = userId ? `/roles/assignments/?user=${userId}` : '/roles/assignments/';
       return apiClient<PaginatedResponse<UserRole>>(url);
     },
-    enabled: true,
+    enabled: !!userId,
   });
 };
 

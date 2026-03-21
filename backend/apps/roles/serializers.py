@@ -24,11 +24,12 @@ class UserRoleSerializer(serializers.ModelSerializer):
     """
 
     role_name = serializers.CharField(source="role.get_name_display", read_only=True)
+    role_code = serializers.CharField(source="role.name", read_only=True)
 
     class Meta:
         model = UserRole
-        fields = ["id", "user", "role", "role_name"]
-        read_only_fields = ["id", "role_name"]
+        fields = ["id", "user", "role", "role_name", "role_code"]
+        read_only_fields = ["id", "role_name", "role_code"]
 
     def validate(self, data):
         """Prevent duplicate user-role assignments."""

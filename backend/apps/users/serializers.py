@@ -151,6 +151,20 @@ class UserSerializer(serializers.ModelSerializer):
 
         return instance
 
+    def to_representation(self, instance):
+        """
+        Include the Django auth.User username in read responses.
+        This allows the frontend to display the login name when editing a user.
+        """
+        data = super().to_representation(instance)
+        from django.contrib.auth.models import User as DjangoUser
+        try:
+            django_user = DjangoUser.objects.get(email=instance.email)
+            data["username"] = django_user.username
+        except DjangoUser.DoesNotExist:
+            data["username"] = ""
+        return data
+
 
 class CredentialSerializer(serializers.ModelSerializer):
     """

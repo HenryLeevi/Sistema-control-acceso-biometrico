@@ -80,6 +80,25 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ["nombre", "apellido", "dui", "email"]
     ordering_fields = ["apellido", "nombre", "created_at"]
 
+    def destroy(self, request, *args, **kwargs):
+        from django.contrib.auth.models import User as DjangoUser
+        from rest_framework.response import Response
+        from rest_framework import status
+        
+        instance = self.get_object()
+        
+        # 1. Delete associated Django auth.User if it exists
+        try:
+            django_user = DjangoUser.objects.get(email=instance.email)
+            django_user.delete()
+        except DjangoUser.DoesNotExist:
+            pass
+            
+        # 2. Delete the custom App User
+        self.perform_destroy(instance)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 @extend_schema_view(
     list=extend_schema(
