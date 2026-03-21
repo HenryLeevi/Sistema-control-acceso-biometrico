@@ -21,17 +21,17 @@ interface NavItem {
 }
 
 const allNavItems: NavItem[] = [
-  { label: 'Mi Panel',         href: '/admin',            icon: LayoutDashboard, roles: ['ADMIN', 'SUBADMIN', 'SEGURIDAD', 'DOCENTE'] },
+  { label: 'Mi Panel',         href: '/admin',            icon: LayoutDashboard, roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO', 'DOCENTE'] },
   { label: 'Mis Horarios',     href: '/admin',            icon: CalendarDays,    roles: ['DOCENTE'] },
   { label: 'Generar OTP',      href: '/admin/otp',        icon: QrCode,          roles: ['DOCENTE'] },
   { label: 'Usuarios',         href: '/admin/usuarios',   icon: Users,           roles: ['ADMIN', 'SUBADMIN'] },
   { label: 'Aulas',            href: '/admin/aulas',      icon: DoorOpen,        roles: ['ADMIN', 'SUBADMIN'] },
   { label: 'Horarios',         href: '/admin/horarios',   icon: Clock,           roles: ['ADMIN', 'SUBADMIN'] },
   { label: 'Permisos',         href: '/admin/permisos',   icon: ShieldCheck,     roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Eventos',          href: '/admin/eventos',    icon: Fingerprint,     roles: ['ADMIN', 'SUBADMIN', 'SEGURIDAD'] },
-  { label: 'Alertas',          href: '/admin/alertas',    icon: AlertTriangle,   roles: ['ADMIN', 'SUBADMIN', 'SEGURIDAD'] },
+  { label: 'Eventos',          href: '/admin/eventos',    icon: Fingerprint,     roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO'] },
+  { label: 'Alertas',          href: '/admin/alertas',    icon: AlertTriangle,   roles: ['ADMIN', 'SUBADMIN', 'BIOMETRICO'] },
   { label: 'Reportes',         href: '/admin/reportes',   icon: FileText,        roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Pantalla Acceso',  href: '/acceso',           icon: Fingerprint,     roles: ['SEGURIDAD'] },
+  { label: 'Pantalla Acceso',  href: '/acceso',           icon: Fingerprint,     roles: ['BIOMETRICO'] },
 ];
 
 

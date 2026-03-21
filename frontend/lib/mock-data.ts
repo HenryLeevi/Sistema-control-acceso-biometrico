@@ -31,7 +31,7 @@ export const mockUsers: User[] = [
     nombre: 'Carlos',
     apellido: 'López',
     is_active: true,
-    roles: ['SEGURIDAD'],
+    roles: ['BIOMETRICO'],
     created_at: '2024-01-03T10:00:00Z',
   },
 ];

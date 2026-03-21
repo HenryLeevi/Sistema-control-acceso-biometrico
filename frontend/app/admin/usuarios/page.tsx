@@ -27,10 +27,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  ADMIN: 'bg-red-100 text-red-700',
-  SUBADMIN: 'bg-orange-100 text-orange-700',
-  DOCENTE: 'bg-blue-100 text-blue-700',
-  SEGURIDAD: 'bg-green-100 text-green-700',
+  BIOMETRICO: 'bg-green-100 text-green-700',
 };
 
 const emptyForm = {
@@ -254,7 +251,7 @@ export default function UsuariosPage() {
                   <Shield className="h-4 w-4" /> Asignar roles
                 </Label>
                 <div className="flex flex-wrap gap-2">
-                  {['ADMIN', 'SUBADMIN', 'DOCENTE', 'SEGURIDAD'].map(roleName => {
+                  {['ADMIN', 'SUBADMIN', 'DOCENTE', 'BIOMETRICO'].map(roleName => {
                     const selected = pendingRolesToAdd.includes(roleName);
                     return (
                       <button

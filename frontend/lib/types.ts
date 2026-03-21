@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────
 
 // Backend returns roles as uppercase strings
-export type Role = 'ADMIN' | 'SUBADMIN' | 'DOCENTE' | 'SEGURIDAD';
+export type Role = 'ADMIN' | 'SUBADMIN' | 'DOCENTE' | 'BIOMETRICO';
 
 // Helper to normalize role from API (handles legacy lowercase too)
 export function normalizeRole(r: string): Role {
