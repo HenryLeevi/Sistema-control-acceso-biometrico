@@ -60,8 +60,9 @@ function AlertasList() {
                           {a.result === 'DENIED' ? 'ACCESO DENEGADO' : 'ALERTA'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 font-mono text-xs">
-                        {a.user ? a.user.substring(0, 8) + '...' : 'Desconocido'}
+                      <td className="px-4 py-3 text-slate-600">
+                        <p className="font-medium text-slate-900">{a.user_nombre || 'Desconocido'}</p>
+                        {a.user_email && <p className="text-[10px] text-slate-400 font-mono">{a.user_email}</p>}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {a.reason || 'Sin detalle'}

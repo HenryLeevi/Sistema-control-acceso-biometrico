@@ -4,21 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Phone, Shield, RefreshCw, CheckCircle, XCircle, AlertCircle, Fingerprint, Hash, Key } from 'lucide-react';
 import { RoleGuard } from '@/components/role-guard';
+import { useAulas, useValidateAccess } from '@/lib/api-hooks';
 
 type AuthStage = 'biometrico' | 'pin' | 'otp' | 'exito' | 'denegado';
 type BiometricStatus = 'scanning' | 'detected' | 'validating' | 'success' | 'fail' | 'not_detected';
 
 const AUDITORIA_AULA = 'A-101 — Laboratorio de Computación';
 const SOPORTE_TELEFONO = '+52 55 1234-5678';
-const COLORES_AULA: Record<string, string> = {
-  'A-101': '#3b82f6',
-  'A-102': '#8b5cf6',
-  'B-201': '#10b981',
-  'C-301': '#f59e0b',
-};
 
 function BiometricoContent() {
   const { toast } = useToast();
+  const { data: aulasData } = useAulas();
+  const validateAccess = useValidateAccess();
+  
+  // We'll just grab the first aula as the current device location for this demo
+  const currentAulaId = aulasData?.results?.[0]?.id || '00000000-0000-0000-0000-000000000000';
 
   const [stage, setStage] = useState<AuthStage>('biometrico');
   const [bioStatus, setBioStatus] = useState<BiometricStatus>('scanning');
@@ -28,49 +28,124 @@ function BiometricoContent() {
   const [otpValue, setOtpValue] = useState('');
   const [scanProgress, setScanProgress] = useState(0);
   const [showSupport, setShowSupport] = useState(false);
-  const scanRef = useRef<NodeJS.Timeout | null>(null);
+  const [authUserNombre, setAuthUserNombre] = useState<string | null>(null);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Simular escaneo biométrico al montar o al reintentar
+  // Stop camera helper
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  // Start Camera
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Camera access error:", err);
+      toast({ title: 'Error de cámara', description: 'No se pudo acceder a la cámara.', variant: 'destructive' });
+      setBioStatus('fail');
+    }
+  };
+
+  // Attempt Face Validation
+  const captureAndValidate = async () => {
+    if (!videoRef.current || !canvasRef.current || !currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') return;
+    
+    setBioStatus('validating');
+    
+    // Draw to canvas and get base64
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const base64Data = dataUrl.split(',')[1];
+    
+    try {
+      const res = await validateAccess.mutateAsync({
+        method: 'FACE',
+        data: base64Data,
+        aula_id: currentAulaId
+      });
+      
+      if (res.result === 'SUCCESS') {
+        setBioStatus('success');
+        setAuthUserNombre(res.user_full_name || 'Usuario');
+        setTimeout(() => setStage('exito'), 1000);
+      } else {
+        handleBioFail(res.reason || 'Rostro no verificado');
+      }
+    } catch (err) {
+      console.error(err);
+      handleBioFail('Error de red al validar rostro');
+    }
+  };
+
+  const handleBioFail = (msg: string) => {
+    const intento = bioIntentos + 1;
+    setBioIntentos(intento);
+    
+    if (intento >= 3) {
+      setBioStatus('fail');
+      toast({ title: '🔒 Biometría fallida', description: 'Demasiados intentos. Usa tu PIN.', variant: 'destructive' });
+      setTimeout(() => setStage('pin'), 1500);
+    } else {
+      setBioStatus('not_detected');
+      toast({ title: '⚠️ Fallo', description: `${msg} (Intento ${intento}/3)` });
+    }
+  };
+
+  // Effect to manage camera and scan interval
+  useEffect(() => {
+    if (stage === 'biometrico') {
+      startCamera();
+      
+      // Auto-scan every 4 seconds if scanning or not detected
+      scanIntervalRef.current = setInterval(() => {
+        setBioStatus(prev => {
+          if (prev === 'scanning' || prev === 'not_detected') {
+            captureAndValidate();
+            return 'validating';
+          }
+          return prev;
+        });
+      }, 4000);
+      
+    } else {
+      stopCamera();
+    }
+    
+    return () => {
+      stopCamera();
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+    };
+  }, [stage, currentAulaId, bioIntentos]);
+
+  // Visual scan progress animation
   useEffect(() => {
     if (stage === 'biometrico' && bioStatus === 'scanning') {
       setScanProgress(0);
       const interval = setInterval(() => {
-        setScanProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            simulateBiometricResult();
-            return 100;
-          }
-          return prev + 2;
-        });
+        setScanProgress(prev => (prev >= 100 ? 0 : prev + 2));
       }, 50);
-      scanRef.current = interval;
       return () => clearInterval(interval);
     }
   }, [stage, bioStatus]);
-
-  const simulateBiometricResult = () => {
-    // Simulación: falla 2 veces, luego "no detecta"
-    setBioStatus('validating');
-    setTimeout(() => {
-      const intento = bioIntentos + 1;
-      if (intento === 1) {
-        setBioStatus('fail');
-        setBioIntentos(intento);
-        toast({ title: '❌ Biometría no validada', description: `Intento ${intento}/3`, variant: 'destructive' });
-      } else if (intento === 2) {
-        setBioStatus('not_detected');
-        setBioIntentos(intento);
-        toast({ title: '⚠️ Rostro no detectado', description: `Intento ${intento}/3` });
-      } else {
-        // 3 intentos: habilitar PIN
-        setBioStatus('fail');
-        setBioIntentos(intento);
-        toast({ title: '🔒 Biometría bloqueada', description: 'Máximo de intentos alcanzado. Ingresa tu PIN.', variant: 'destructive' });
-        setTimeout(() => setStage('pin'), 1500);
-      }
-    }, 800);
-  };
 
   const handleBioRetry = () => {
     setBioStatus('scanning');
@@ -80,24 +155,41 @@ function BiometricoContent() {
   const handlePinKey = (key: string) => {
     if (key === 'DEL') {
       setPinValue(prev => prev.slice(0, -1));
-    } else if (pinValue.length < 6) {
+    } else if (pinValue.length < 8) {
       setPinValue(prev => prev + key);
     }
   };
 
-  const handlePinSubmit = () => {
+  const handlePinSubmit = async () => {
     const intento = pinIntentos + 1;
-    if (pinValue === '123456') {
-      setStage('exito');
-    } else {
-      setPinIntentos(intento);
-      setPinValue('');
-      if (intento >= 3) {
-        toast({ title: '🔒 PIN bloqueado', description: 'Solicita un código OTP al docente.', variant: 'destructive' });
-        setTimeout(() => setStage('otp'), 1500);
+    if (!currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') {
+      toast({ title: 'Error', description: 'Aula no cargada aún', variant: 'destructive' });
+      return;
+    }
+    
+    try {
+      const res = await validateAccess.mutateAsync({
+        method: 'PIN',
+        data: pinValue,
+        aula_id: currentAulaId
+      });
+      
+      if (res.result === 'SUCCESS') {
+        setAuthUserNombre(res.user_full_name || 'Usuario');
+        setStage('exito');
       } else {
-        toast({ title: '❌ PIN incorrecto', description: `Intento ${intento}/3`, variant: 'destructive' });
+        setPinIntentos(intento);
+        setPinValue('');
+        if (intento >= 3) {
+          toast({ title: '🔒 PIN bloqueado', description: 'Solicita un código OTP al docente.', variant: 'destructive' });
+          setTimeout(() => setStage('otp'), 1500);
+        } else {
+          toast({ title: '❌ PIN incorrecto', description: `${res.reason} - Intento ${intento}/3`, variant: 'destructive' });
+        }
       }
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Error', description: 'No se pudo validar el PIN', variant: 'destructive' });
     }
   };
 
@@ -120,6 +212,7 @@ function BiometricoContent() {
     setPinValue('');
     setOtpValue('');
     setScanProgress(0);
+    setAuthUserNombre(null);
   };
 
   const pinPad = ['1','2','3','4','5','6','7','8','9','DEL','0','OK'];
@@ -135,7 +228,7 @@ function BiometricoContent() {
           </div>
           <div>
             <p className="text-xs text-gray-400">Control de Acceso</p>
-            <p className="text-sm font-semibold">{AUDITORIA_AULA}</p>
+            <p className="text-sm font-semibold">{aulasData?.results?.[0]?.description || AUDITORIA_AULA}</p>
           </div>
         </div>
         <div className="text-right">
@@ -172,26 +265,26 @@ function BiometricoContent() {
         {stage === 'biometrico' && (
           <div className="w-full max-w-sm flex flex-col items-center gap-5">
             {/* Camera Viewfinder */}
-            <div className="relative w-72 h-72 rounded-2xl overflow-hidden border-2 border-blue-500/50 shadow-2xl shadow-blue-500/20">
-              {/* Simulated camera bg */}
-              <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center">
+            <div className="relative w-72 h-72 rounded-2xl overflow-hidden border-2 border-blue-500/50 shadow-2xl shadow-blue-500/20 bg-gray-900">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+              
+              <div className="absolute inset-0 flex items-center justify-center">
                 <div className="relative">
                   {/* Face outline */}
                   <div className={`w-36 h-44 rounded-full border-4 transition-all duration-300 ${
                     bioStatus === 'scanning' ? 'border-blue-400/60 animate-pulse' :
                     bioStatus === 'validating' ? 'border-yellow-400 animate-pulse' :
-                    bioStatus === 'detected' ? 'border-green-400' :
                     bioStatus === 'success' ? 'border-green-400' :
                     bioStatus === 'not_detected' ? 'border-orange-400' :
                     'border-red-500'
-                  }`}>
-                    <div className="absolute inset-0 flex items-center justify-center text-6xl select-none">
-                      {bioStatus === 'success' ? '😄' :
-                       bioStatus === 'fail' ? '❌' :
-                       bioStatus === 'not_detected' ? '🔍' :
-                       bioStatus === 'validating' ? '👤' : '👤'}
-                    </div>
-                  </div>
+                  }`} />
                   {/* Corner brackets */}
                   <div className="absolute -top-3 -left-3 w-6 h-6 border-t-2 border-l-2 border-blue-400 rounded-tl" />
                   <div className="absolute -top-3 -right-3 w-6 h-6 border-t-2 border-r-2 border-blue-400 rounded-tr" />
@@ -199,6 +292,7 @@ function BiometricoContent() {
                   <div className="absolute -bottom-3 -right-3 w-6 h-6 border-b-2 border-r-2 border-blue-400 rounded-br" />
                 </div>
               </div>
+              
               {/* Scan line */}
               {bioStatus === 'scanning' && (
                 <div
@@ -216,20 +310,22 @@ function BiometricoContent() {
             </div>
 
             {/* Status Message */}
-            <div className="text-center">
+            <div className="text-center h-16">
               {bioStatus === 'scanning' && (
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center gap-2 text-blue-300">
                     <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
-                    <span className="text-sm font-medium">Escaneando rostro...</span>
+                    <span className="text-sm font-medium">Buscando rostro...</span>
                   </div>
                   <p className="text-xs text-gray-500">Mira directamente a la cámara</p>
                 </div>
               )}
               {bioStatus === 'validating' && (
-                <div className="flex items-center gap-2 text-yellow-300">
-                  <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-yellow-400 animate-spin" />
-                  <span className="text-sm font-medium">Validando...</span>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 text-yellow-300">
+                    <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-yellow-400 animate-spin" />
+                    <span className="text-sm font-medium">Validando con Azure...</span>
+                  </div>
                 </div>
               )}
               {bioStatus === 'fail' && (
@@ -238,33 +334,25 @@ function BiometricoContent() {
                     <XCircle className="h-5 w-5" />
                     <span className="text-sm font-medium">Biometría no validada</span>
                   </div>
-                  <p className="text-xs text-gray-500">Intento {bioIntentos}/3</p>
-                  {bioIntentos < 3 && (
-                    <button
-                      onClick={handleBioRetry}
-                      className="mt-1 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" /> Reintentar
-                    </button>
-                  )}
+                  <p className="text-xs text-gray-500">Reintentando...</p>
                 </div>
               )}
               {bioStatus === 'not_detected' && (
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center gap-2 text-orange-400">
                     <AlertCircle className="h-5 w-5" />
-                    <span className="text-sm font-medium">Rostro no detectado</span>
+                    <span className="text-sm font-medium">No se detectó un rostro</span>
                   </div>
-                  <p className="text-xs text-gray-500">Ajusta tu posición frente a la cámara</p>
-                  <button
-                    onClick={handleBioRetry}
-                    className="mt-1 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                  >
+                  <button onClick={handleBioRetry} className="mt-1 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300">
                     <RefreshCw className="h-3.5 w-3.5" /> Reintentar
                   </button>
                 </div>
               )}
             </div>
+            {/* Quick access to PIN for testing / manual bypass */}
+            <button onClick={() => setStage('pin')} className="text-xs text-white/50 hover:text-white underline">
+              Acceder con PIN
+            </button>
           </div>
         )}
 
@@ -280,17 +368,8 @@ function BiometricoContent() {
             </div>
 
             {/* PIN dots */}
-            <div className="flex gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-3 w-3 rounded-full border-2 transition-all ${
-                    i < pinValue.length
-                      ? 'bg-purple-400 border-purple-400 scale-110'
-                      : 'border-white/30'
-                  }`}
-                />
-              ))}
+            <div className="h-6 text-xl tracking-widest font-mono text-white flex justify-center items-center">
+              {pinValue.length === 0 ? <span className="text-white/20">...</span> : '*'.repeat(pinValue.length)}
             </div>
 
             {/* Numpad */}
@@ -314,6 +393,10 @@ function BiometricoContent() {
                 </button>
               ))}
             </div>
+            
+            <button onClick={() => setStage('biometrico')} className="text-xs text-white/50 hover:text-white underline mt-2">
+              Volver a reconocimiento facial
+            </button>
           </div>
         )}
 
@@ -354,6 +437,9 @@ function BiometricoContent() {
               Verificar OTP
             </button>
             <p className="text-xs text-gray-500">(Demo: usa &quot;000000&quot;)</p>
+            <button onClick={() => setStage('biometrico')} className="text-xs text-white/50 hover:text-white underline">
+              Reiniciar terminal
+            </button>
           </div>
         )}
 
@@ -368,14 +454,15 @@ function BiometricoContent() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-green-400">Acceso Permitido</h2>
-              <p className="text-gray-400 mt-1">{AUDITORIA_AULA}</p>
+              <p className="text-lg font-medium text-white mb-2">{authUserNombre}</p>
+              <p className="text-gray-400 mt-1">{aulasData?.results?.[0]?.description || AUDITORIA_AULA}</p>
             </div>
             <button
-              onClick={handleReset}
-              className="mt-4 flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              <RefreshCw className="h-4 w-4" /> Nueva verificación
-            </button>
+               onClick={handleReset}
+               className="mt-4 flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+             >
+               <RefreshCw className="h-4 w-4" /> Nueva verificación
+             </button>
           </div>
         )}
 
@@ -410,7 +497,7 @@ function BiometricoContent() {
         </button>
         <div className="flex items-center gap-2 text-xs text-gray-600">
           <Shield className="h-3.5 w-3.5" />
-          <span>Sistema Biométrico v1.0</span>
+          <span>Sistema Biométrico v2.0 (Azure AI)</span>
         </div>
       </div>
 

@@ -76,11 +76,16 @@ class AccessEventSerializer(serializers.ModelSerializer):
     service layer — never via direct API POST.
     """
 
+    user_nombre = serializers.CharField(source="user.full_name", read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+
     class Meta:
         model = AccessEvent
         fields = [
             "id",
             "user",
+            "user_nombre",
+            "user_email",
             "aula",
             "device",
             "timestamp",

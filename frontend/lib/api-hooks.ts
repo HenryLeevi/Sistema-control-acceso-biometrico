@@ -72,7 +72,8 @@ export const useEnrolarBiometria = () => {
     mutationFn: async ({ usuarioId, imagenes }: { usuarioId: string; imagenes: File[] }) => {
       if (MOCK_MODE) return MockAPI.enrolarBiometria(usuarioId, imagenes);
       const formData = new FormData();
-      imagenes.forEach((img, index) => formData.append(`imagen_${index}`, img));
+      formData.append('user', usuarioId);
+      imagenes.forEach((img) => formData.append('images', img));
       return apiClientFormData<{ success: boolean; message: string }>(`/biometric/`, formData);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
@@ -261,7 +262,19 @@ export const useDeletePermiso = () => {
   });
 };
 
-// ── Events / Eventos (/api/access/events/) ──────────
+// ── Permissions / Permisos (/api/access/permissions/) ─
+
+export const useValidateAccess = () => {
+  return useMutation({
+    mutationFn: async (payload: { method: 'FACE' | 'PIN', data: string, aula_id: string, device_id?: string }) => {
+      if (MOCK_MODE) {
+        // Simple mock response
+        return { result: 'SUCCESS', reason: null };
+      }
+      return apiClient<any>('/access/validate/', { method: 'POST', body: JSON.stringify(payload) });
+    },
+  });
+};
 
 export const useEventos = (filters?: Record<string, string>) => {
   return useQuery({
@@ -312,13 +325,22 @@ export const useReporte = (filters?: Record<string, string>) => {
   });
 };
 
-// ── OTP (/api/users/pins/) ──────────────────────────
+// ── OTP / PIN (/api/users/pins/) ──────────────────────────
+
+export const useCreatePinContingency = () => {
+  return useMutation({
+    mutationFn: async (data: { user: string; pin_hash: string; expires_at: string; is_active: boolean }) => {
+      if (MOCK_MODE) return { id: "mock", is_active: true };
+      return apiClient<any>('/users/pins/', { method: 'POST', body: JSON.stringify(data) });
+    },
+  });
+};
 
 export const useGenerarOTP = () => {
   return useMutation({
     mutationFn: async () => {
       if (MOCK_MODE) return MockAPI.generarOTP();
-      return apiClient<OTPCode>('/users/pins/', { method: 'POST' });
+      return apiClient<OTPCode>('/users/otp/generate/', { method: 'POST' });
     },
   });
 };

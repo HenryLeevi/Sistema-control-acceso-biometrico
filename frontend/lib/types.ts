@@ -75,6 +75,8 @@ export interface AccessEvent {
   id: string;
   timestamp: string;
   user?: string;    // UUID (nullable — unidentified attempts)
+  user_nombre?: string; // Full name from backend
+  user_email?: string;  // Email from backend
   aula: string;     // UUID
   device?: string;  // UUID
   method: 'FACE' | 'PIN' | 'MANUAL';

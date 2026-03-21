@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   useUsuarios, useCreateUsuario, useUpdateUsuario, useDeleteUsuario,
   useRoles, useUserRoles, useCreateUserRole, useDeleteUserRole,
-  useEnrolarBiometria,
+  useEnrolarBiometria, useCreatePinContingency,
 } from '@/lib/api-hooks';
+import { WebcamCapture } from '@/components/webcam-capture';
 import { User, AppRole, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Upload, Shield, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Shield, X, Eye, EyeOff, Copy, RefreshCw } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
@@ -31,7 +32,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const emptyForm = {
-  username: '', password: '', email: '', nombre: '', apellido: '', dui: '', is_active: true,
+  username: '', password: '', email: '', nombre: '', apellido: '', dui: '', residencia: '', pin: '', is_active: true,
 };
 
 export default function UsuariosPage() {
@@ -43,6 +44,7 @@ export default function UsuariosPage() {
   const { data: rolesData } = useRoles();
   const createUserRole = useCreateUserRole();
   const deleteUserRole = useDeleteUserRole();
+  const createPin = useCreatePinContingency();
   const { toast } = useToast();
 
   // Track which user's roles we want to load for the edit dialog
@@ -53,7 +55,7 @@ export default function UsuariosPage() {
   const [isBioDialogOpen, setIsBioDialogOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [formData, setFormData] = useState(emptyForm);
-  const [bioFiles, setBioFiles] = useState<FileList | null>(null);
+  const [bioFiles, setBioFiles] = useState<File[]>([]);
   const [selectedForBio, setSelectedForBio] = useState<User | null>(null);
   const [pendingRoleToAdd, setPendingRoleToAdd] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
@@ -105,6 +107,8 @@ export default function UsuariosPage() {
       nombre: u.nombre,
       apellido: u.apellido,
       dui: u.dui || '',
+      residencia: u.residencia || '',
+      pin: '', // Pin is always write-only
       is_active: u.is_active,
     });
     setPendingRoleToAdd(''); // will be overwritten by useEffect once userRoles loads
@@ -155,6 +159,7 @@ export default function UsuariosPage() {
 
       // Build payload — strip empty strings for write-only fields on edit
       const payload: Record<string, unknown> = { ...formData };
+      delete payload.pin; // Do not send pin to user endpoint
       if (!payload.username) delete payload.username;
       if (!payload.password) delete payload.password;
 
@@ -190,11 +195,46 @@ export default function UsuariosPage() {
         }
       }
 
+      // Handle PIN Assignment
+      if (formData.pin) {
+        try {
+          const expires = new Date();
+          expires.setFullYear(expires.getFullYear() + 10);
+          await createPin.mutateAsync({
+            user: savedUser.id,
+            pin_hash: formData.pin,
+            expires_at: expires.toISOString(),
+            is_active: true
+          });
+        } catch (pinErr) {
+          console.error("Error asignando PIN:", pinErr);
+          toast({ title: 'Aviso (PIN falló)', description: 'Usuario guardado, pero falló el PIN.', variant: 'destructive' });
+        }
+      }
+
       setIsDialogOpen(false);
     } catch (err) {
       console.error(err);
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'No se pudo guardar', variant: 'destructive' });
     }
+  };
+
+  const handleGeneratePin = () => {
+    // Generate 6 random digits from 1 to 6 as requested
+    let newPin;
+    const currentPin = formData.pin;
+    do {
+      newPin = Array.from({ length: 6 }, () => Math.floor(Math.random() * 6) + 1).join('');
+    } while (newPin === currentPin);
+    
+    setFormData({ ...formData, pin: newPin });
+    toast({ title: 'PIN Generado', description: `Nuevo PIN: ${newPin}` });
+  };
+
+  const handleCopyPin = () => {
+    if (!formData.pin) return;
+    navigator.clipboard.writeText(formData.pin);
+    toast({ title: 'Copiado', description: 'PIN copiado al portapapeles' });
   };
 
   const confirmDelete = async () => {
@@ -214,7 +254,7 @@ export default function UsuariosPage() {
       return;
     }
     try {
-      await enrolarBiometria.mutateAsync({ usuarioId: selectedForBio.id, imagenes: Array.from(bioFiles) });
+      await enrolarBiometria.mutateAsync({ usuarioId: selectedForBio.id, imagenes: bioFiles });
       toast({ title: 'Biometría enrolada correctamente' });
       setIsBioDialogOpen(false);
     } catch {
@@ -351,6 +391,46 @@ export default function UsuariosPage() {
                   maxLength={10}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>Residencia</Label>
+                  <Input 
+                    placeholder="Ej: San Salvador" 
+                    value={formData.residencia} 
+                    onChange={e => setFormData({ ...formData, residencia: e.target.value })} 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>PIN (Biométrico)</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input 
+                        type={showPassword ? 'text' : 'password'} 
+                        placeholder="Ej: 1234" 
+                        value={formData.pin} 
+                        onChange={e => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '') })} 
+                        maxLength={8}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(v => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <Button type="button" variant="outline" size="icon" onClick={handleGeneratePin} title="Generar PIN">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" onClick={handleCopyPin} disabled={!formData.pin} title="Copiar PIN">
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {editing && <p className="text-xs text-slate-400">Dejar vacío para mantener el actual</p>}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="usr_active" checked={formData.is_active}
                   onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="h-4 w-4" />
@@ -413,11 +493,26 @@ export default function UsuariosPage() {
                   <p className="text-sm text-slate-500">{selectedForBio.email}</p>
                 </div>
               )}
-              <div className="space-y-1">
-                <Label>Imágenes del rostro (1–3 archivos)</Label>
-                <Input type="file" accept="image/*" multiple onChange={e => setBioFiles(e.target.files)} />
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label>Imágenes del rostro (Desde archivo)</Label>
+                  <Input 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={e => e.target.files && setBioFiles(Array.from(e.target.files))} 
+                  />
+                </div>
+                
+                <div className="relative text-center text-xs font-medium text-slate-500 py-2">
+                  <span className="bg-white px-2 relative z-10">O usar cámara web</span>
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t"></div></div>
+                </div>
+
+                <WebcamCapture onSave={(files) => setBioFiles(files)} maxPhotos={3} />
               </div>
-              <div className="flex justify-end gap-2">
+              
+              <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setIsBioDialogOpen(false)}>Cancelar</Button>
                 <Button onClick={handleBio} disabled={enrolarBiometria.isPending}>
                   {enrolarBiometria.isPending ? 'Procesando...' : 'Enrolar'}
