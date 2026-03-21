@@ -15,7 +15,7 @@ import { es } from 'date-fns/locale';
 import { AccessEvent } from '@/lib/types';
 import { DynamicChart } from '@/components/dynamic-chart';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // Helper: translate backend enum values to Spanish labels
 const metodLabel = (m: string) => ({ FACE: 'Facial', PIN: 'PIN', MANUAL: 'Manual' }[m] || m);
@@ -37,6 +37,26 @@ function AdminDashboard() {
 
   const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
   const [dashboardMode, setDashboardMode] = useState<'classic' | 'interactive'>('classic');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Cargar estado inicial desde localStorage
+  useEffect(() => {
+    try {
+      const savedWidgets = localStorage.getItem('dashboard_widgets');
+      if (savedWidgets) setActiveWidgets(JSON.parse(savedWidgets));
+      const savedMode = localStorage.getItem('dashboard_mode');
+      if (savedMode === 'classic' || savedMode === 'interactive') setDashboardMode(savedMode);
+    } catch(e) {}
+    setIsLoaded(true);
+  }, []);
+
+  // Guardar estado en localStorage cuando cambie
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('dashboard_widgets', JSON.stringify(activeWidgets));
+      localStorage.setItem('dashboard_mode', dashboardMode);
+    }
+  }, [activeWidgets, dashboardMode, isLoaded]);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('widgetType', id);
@@ -57,6 +77,20 @@ function AdminDashboard() {
   const removeWidget = (type: string) => {
     setActiveWidgets((prev) => prev.filter((w) => w !== type));
   };
+
+  if (!isLoaded) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-64" />
+        </div>
+        <div className="h-[400px] w-full rounded-xl flex items-center justify-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-slate-300 border-r-slate-600" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
