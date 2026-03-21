@@ -1,0 +1,4 @@
+websockets==12.0
+gpiozero==2.0
+pigpio==1.78
+python-dotenv==1.0.1

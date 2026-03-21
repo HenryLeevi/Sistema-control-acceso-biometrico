@@ -20,7 +20,7 @@ from .serializers import RoleSerializer, UserRoleSerializer
     list=extend_schema(
         tags=["Roles"],
         summary="Listar roles del sistema",
-        description="Retorna los 4 roles disponibles: `ADMIN`, `SUBADMIN`, `DOCENTE`, `SEGURIDAD`.",
+        description="Retorna los 4 roles disponibles: `ADMIN`, `SUBADMIN`, `DOCENTE`, `BIOMETRICO`.",
     ),
     create=extend_schema(
         tags=["Roles"],
