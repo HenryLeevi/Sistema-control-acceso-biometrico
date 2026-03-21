@@ -61,6 +61,13 @@ export default function UsuariosPage() {
   const [pendingRoleToAdd, setPendingRoleToAdd] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // Clear editing state when dialog closes to force the role fetch effect to run again when re-opened
+  useEffect(() => {
+    if (!isDialogOpen) {
+      setEditingUserId(undefined);
+    }
+  }, [isDialogOpen]);
+
   const usuarios = data?.results || [];
   const roles = rolesData?.results || [];
   const isPending = createUsuario.isPending || updateUsuario.isPending;
