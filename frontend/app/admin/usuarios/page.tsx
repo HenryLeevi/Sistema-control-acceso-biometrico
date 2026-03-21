@@ -336,7 +336,18 @@ export default function UsuariosPage() {
               </div>
               <div className="space-y-1">
                 <Label>DUI (00000000-0)</Label>
-                <Input placeholder="00000000-0" value={formData.dui} onChange={e => setFormData({ ...formData, dui: e.target.value })} />
+                <Input 
+                  placeholder="00000000-0" 
+                  value={formData.dui} 
+                  onChange={e => {
+                    let val = e.target.value.replace(/\D/g, ''); // Solo números
+                    if (val.length > 8) {
+                      val = val.slice(0, 8) + '-' + val.slice(8, 9);
+                    }
+                    setFormData({ ...formData, dui: val });
+                  }} 
+                  maxLength={10}
+                />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="usr_active" checked={formData.is_active}
