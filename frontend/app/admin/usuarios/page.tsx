@@ -57,6 +57,7 @@ export default function UsuariosPage() {
   const [selectedForBio, setSelectedForBio] = useState<User | null>(null);
   const [pendingRoleToAdd, setPendingRoleToAdd] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   // Clear editing state when dialog closes to force the role fetch effect to run again when re-opened
   useEffect(() => {
@@ -196,11 +197,12 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleDelete = async (u: User) => {
-    if (!confirm(`¿Eliminar usuario ${u.nombre} ${u.apellido}?`)) return;
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
     try {
-      await deleteUsuario.mutateAsync(u.id);
+      await deleteUsuario.mutateAsync(userToDelete.id);
       toast({ title: 'Usuario eliminado' });
+      setUserToDelete(null);
     } catch {
       toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
     }
@@ -254,7 +256,7 @@ export default function UsuariosPage() {
           <Button size="sm" variant="outline" onClick={() => { setSelectedForBio(row); setIsBioDialogOpen(true); }}>
             <Upload className="h-3.5 w-3.5" />
           </Button>
-          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(row)}>
+          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => setUserToDelete(row)}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -424,7 +426,26 @@ export default function UsuariosPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </AdminLayout>
+        <Dialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-slate-600">
+              ¿Estás seguro de que deseas eliminar al usuario <strong>{userToDelete?.nombre} {userToDelete?.apellido}</strong>?
+            </p>
+            <p className="text-xs text-red-500 mt-2">Esta acción no se puede deshacer.</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setUserToDelete(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteUsuario.isPending}>
+              {deleteUsuario.isPending ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AdminLayout>
     </RoleGuard>
   );
 }
