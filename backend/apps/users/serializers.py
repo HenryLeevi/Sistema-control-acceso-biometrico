@@ -186,12 +186,17 @@ class PinContingencySerializer(serializers.ModelSerializer):
     Hashing must be performed at the service/view layer before saving.
     """
 
-    pin_hash = serializers.CharField(write_only=True, min_length=4, max_length=8)
+    pin_hash = serializers.CharField(write_only=True, min_length=4, max_length=10)
 
     class Meta:
         model = PinContingency
         fields = ["id", "user", "pin_hash", "is_active", "created_at", "expires_at"]
         read_only_fields = ["id", "created_at"]
+
+    def validate_pin_hash(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("El PIN debe contener solo números.")
+        return value
 
     def validate_expires_at(self, value):
         from django.utils import timezone
@@ -200,3 +205,9 @@ class PinContingencySerializer(serializers.ModelSerializer):
                 "La fecha de expiración debe ser en el futuro."
             )
         return value
+
+    def create(self, validated_data):
+        from django.contrib.auth.hashers import make_password
+        # Hash the PIN before storing it
+        validated_data["pin_hash"] = make_password(validated_data["pin_hash"])
+        return super().create(validated_data)

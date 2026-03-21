@@ -247,6 +247,7 @@ class AccessValidateView(APIView):
                     "correlation_id": str(result.correlation_id),
                     "event_id": str(result.event_id),
                     "reason": result.reason,
+                    "user_full_name": result.user_full_name,
                 },
                 status=status.HTTP_200_OK,
             )
