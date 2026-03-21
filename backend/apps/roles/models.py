@@ -2,7 +2,7 @@
 apps/roles/models.py
 
 Models:
-  - Role     : Named role in the system (ADMIN, SUBADMIN, DOCENTE, SEGURIDAD)
+  - Role     : Named role in the system (ADMIN, SUBADMIN, DOCENTE, BIOMETRICO)
   - UserRole : Associates a User with a Role (many-to-many via explicit join table)
 """
 
@@ -21,7 +21,7 @@ class Role(models.Model):
         ADMIN = "ADMIN", "Administrador"
         SUBADMIN = "SUBADMIN", "Sub-Administrador"
         DOCENTE = "DOCENTE", "Docente"
-        SEGURIDAD = "SEGURIDAD", "Seguridad"
+        BIOMETRICO = "BIOMETRICO", "Biométrico"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(

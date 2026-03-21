@@ -66,7 +66,7 @@ export default function AlertasPage() {
   }, [allEvents, filterResult, filterMethod, showAlertOnly, search]);
 
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'SEGURIDAD']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'BIOMETRICO']}>
       <AdminLayout>
         <div className="space-y-6">
           {/* Header */}

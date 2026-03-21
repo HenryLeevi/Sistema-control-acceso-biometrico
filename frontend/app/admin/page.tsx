@@ -245,7 +245,7 @@ function SeguridadDashboard() {
 // ------------------------
 export default function AdminDashboardPage() {
   const { hasRole } = useAuth();
-  const isOnlySeguridad = hasRole('SEGURIDAD') && !hasRole('ADMIN') && !hasRole('SUBADMIN') && !hasRole('DOCENTE');
+  const isOnlyBiometrico = hasRole('BIOMETRICO') && !hasRole('ADMIN') && !hasRole('SUBADMIN') && !hasRole('DOCENTE');
   const isDocente = hasRole('DOCENTE') && !hasRole('ADMIN') && !hasRole('SUBADMIN');
 
   // Docente tiene su propia vista importada como lazy redirect
@@ -254,9 +254,9 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'SEGURIDAD']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN', 'BIOMETRICO']}>
       <AdminLayout>
-        {isOnlySeguridad ? <SeguridadDashboard /> : <AdminDashboard />}
+        {isOnlyBiometrico ? <SeguridadDashboard /> : <AdminDashboard />}
       </AdminLayout>
     </RoleGuard>
   );
