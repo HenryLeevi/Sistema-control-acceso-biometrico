@@ -6,83 +6,192 @@ import { KPICard } from '@/components/kpi-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useKPIData, useAlertas, useEventos, useUsuarios } from '@/lib/api-hooks';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CheckCircle, XCircle, Activity, AlertTriangle, Users, ShieldAlert, UserX, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Activity, AlertTriangle, Users, ShieldAlert, UserX, Clock, LayoutDashboard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth-context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AccessEvent } from '@/lib/types';
+import { DynamicChart } from '@/components/dynamic-chart';
+import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 // Helper: translate backend enum values to Spanish labels
 const metodLabel = (m: string) => ({ FACE: 'Facial', PIN: 'PIN', MANUAL: 'Manual' }[m] || m);
 const resultLabel = (r: string) => ({ SUCCESS: 'Permitido', DENIED: 'Denegado' }[r] || r);
 
-// ------------------------
-// Dashboard para Admin/Subadmin - vista completa con KPIs
-// ------------------------
+const WIDGET_OPTIONS = [
+  { id: 'accesos_hoy', label: 'Accesos Hoy', icon: Activity },
+  { id: 'tasa_exito', label: 'Tasa de Éxito', icon: CheckCircle },
+  { id: 'tasa_rechazo', label: 'Tasa de Rechazo', icon: XCircle },
+  { id: 'top_aulas', label: 'Top Aulas', icon: UserX },
+  { id: 'alertas', label: 'Alertas Activas', icon: AlertTriangle },
+  { id: 'usuarios', label: 'Usuarios Activos', icon: Users },
+];
+
 function AdminDashboard() {
   const { data: kpiData, isLoading: kpiLoading } = useKPIData();
   const { data: alertasData } = useAlertas();
-  // alertas now returns AccessEvent[] with alert_flag=true
   const alertasRecientes = (alertasData?.results || []).slice(0, 5);
+
+  const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
+  const [dashboardMode, setDashboardMode] = useState<'classic' | 'interactive'>('classic');
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('widgetType', id);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('widgetType');
+    if (type && !activeWidgets.includes(type)) {
+      setActiveWidgets((prev) => [...prev, type]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const removeWidget = (type: string) => {
+    setActiveWidgets((prev) => prev.filter((w) => w !== type));
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-600 mt-1">Resumen de actividad del sistema</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-600 mt-1">
+            {dashboardMode === 'classic' ? 'Resumen de actividad del sistema' : 'Arrastra las métricas para visualizar tus datos'}
+          </p>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+          <button 
+            onClick={() => setDashboardMode('classic')}
+            className={cn("px-4 py-1.5 text-sm font-medium rounded-md transition-colors", dashboardMode === 'classic' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+          >
+            Clásico
+          </button>
+          <button 
+            onClick={() => setDashboardMode('interactive')}
+            className={cn("px-4 py-1.5 text-sm font-medium rounded-md transition-colors", dashboardMode === 'interactive' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
+          >
+            Interactivo
+          </button>
+        </div>
       </div>
 
-      {kpiLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-        </div>
+      {dashboardMode === 'interactive' ? (
+        <>
+          {kpiLoading ? (
+            <div className="flex gap-4">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-32 rounded-full" />)}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3 p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+              {WIDGET_OPTIONS.map((widget) => {
+                const Icon = widget.icon;
+                const isActive = activeWidgets.includes(widget.id);
+                return (
+                  <div
+                    key={widget.id}
+                    draggable={!isActive}
+                    onDragStart={(e) => handleDragStart(e, widget.id)}
+                    className={cn(
+                      "flex items-center space-x-2 px-4 py-2 rounded-full border text-sm font-medium transition-all",
+                      isActive 
+                        ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60" 
+                        : "bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:shadow-md hover:-translate-y-0.5 cursor-grab active:cursor-grabbing shadow-sm"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{widget.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div 
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            className={cn(
+              "min-h-[450px] p-6 rounded-2xl border-2 transition-all duration-300",
+              activeWidgets.length === 0 
+                ? "border-dashed border-slate-300 bg-slate-50 flex items-center justify-center"
+                : "border-solid border-transparent bg-transparent grid gap-6 md:grid-cols-2 lg:grid-cols-3 p-0"
+            )}
+          >
+            {activeWidgets.length === 0 ? (
+              <div className="text-center text-slate-400 pointer-events-none">
+                <LayoutDashboard className="h-16 w-16 mx-auto mb-4 opacity-20 text-slate-500" />
+                <p className="text-xl font-bold text-slate-500">Lienzo Vacío</p>
+                <p className="text-sm mt-1">Arrastra aquí las etiquetas superiores para armar tu Dashboard</p>
+              </div>
+            ) : (
+              activeWidgets.map((type) => (
+                <div key={type} className="animate-in fade-in zoom-in duration-300">
+                  <DynamicChart type={type} data={kpiData} onRemove={() => removeWidget(type)} />
+                </div>
+              ))
+            )}
+          </div>
+        </>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <KPICard title="Accesos Hoy" value={kpiData?.total_accesos_hoy || 0} icon={Activity} description="Total de intentos" />
-          <KPICard title="Tasa de Éxito" value={`${kpiData?.tasa_exito.toFixed(1) || 0}%`} icon={CheckCircle} description="Accesos permitidos" />
-          <KPICard title="Tasa de Rechazo" value={`${kpiData?.tasa_rechazo.toFixed(1) || 0}%`} icon={XCircle} description="Accesos denegados" />
-          <KPICard title="Alertas Activas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} description="Requieren revisión" />
-          <KPICard title="Usuarios Activos" value={kpiData?.usuarios_activos || 0} icon={Users} description="Con permisos vigentes" />
-        </div>
+        <>
+          {kpiLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              <KPICard title="Accesos Hoy" value={kpiData?.total_accesos_hoy || 0} icon={Activity} description="Total de intentos" />
+              <KPICard title="Tasa de Éxito" value={`${kpiData?.tasa_exito.toFixed(1) || 0}%`} icon={CheckCircle} description="Accesos permitidos" />
+              <KPICard title="Tasa de Rechazo" value={`${kpiData?.tasa_rechazo.toFixed(1) || 0}%`} icon={XCircle} description="Accesos denegados" />
+              <KPICard title="Alertas Activas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} description="Requieren revisión" />
+              <KPICard title="Usuarios Activos" value={kpiData?.usuarios_activos || 0} icon={Users} description="Con permisos vigentes" />
+            </div>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader><CardTitle>Accesos por Hora</CardTitle></CardHeader>
+              <CardContent>
+                {kpiLoading ? <Skeleton className="h-64" /> : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={kpiData?.accesos_por_hora || []}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hora" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="cantidad" fill="#0f172a" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Top Aulas</CardTitle></CardHeader>
+              <CardContent>
+                {kpiLoading ? <Skeleton className="h-64" /> : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={kpiData?.top_aulas || []} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="aula" type="category" width={80} />
+                      <Tooltip />
+                      <Bar dataKey="cantidad" fill="#0f172a" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Accesos por Hora</CardTitle></CardHeader>
-          <CardContent>
-            {kpiLoading ? <Skeleton className="h-64" /> : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={kpiData?.accesos_por_hora || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hora" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="cantidad" fill="#0f172a" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Top Aulas</CardTitle></CardHeader>
-          <CardContent>
-            {kpiLoading ? <Skeleton className="h-64" /> : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={kpiData?.top_aulas || []} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="aula" type="category" width={80} />
-                  <Tooltip />
-                  <Bar dataKey="cantidad" fill="#0f172a" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
       <Card>
         <CardHeader><CardTitle>Alertas Recientes</CardTitle></CardHeader>
