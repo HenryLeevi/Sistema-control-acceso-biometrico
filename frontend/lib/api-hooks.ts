@@ -325,7 +325,9 @@ export const useCreatePinContingency = () => {
 export const useGenerarOTP = () => {
   return useMutation({
     mutationFn: async () => {
-      return apiClient<OTPCode>('/users/otp/generate/', { method: 'POST' });
+      return apiClient<OTPCode>('/access/otps/generate/', { method: 'POST' });
     },
   });
 };
+
+
