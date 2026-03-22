@@ -25,6 +25,7 @@ export interface User {
   // Present in login/me response — not in base UserSerializer
   username?: string;
   roles?: Role[];
+  local_user_id?: string | null;
 }
 
 export interface AppRole {
