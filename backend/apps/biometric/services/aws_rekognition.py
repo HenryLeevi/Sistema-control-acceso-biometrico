@@ -88,3 +88,23 @@ def search_face_by_image(image_bytes):
         print(f"Rekognition Search Error: {e}")
         
     return None
+
+def delete_face_from_collection(face_id):
+    """
+    Deletes a face from the Rekognition collection given its FaceId.
+    """
+    if not face_id or face_id == "PENDING_AWS_REKOGNITION":
+        return
+        
+    client = get_rekognition_client()
+    collection_id = settings.AWS_REKOGNITION_COLLECTION_ID
+    try:
+        client.delete_faces(
+            CollectionId=collection_id,
+            FaceIds=[face_id]
+        )
+        print(f"DEBUG REKOGNITION: Successfully deleted FaceId {face_id}")
+        return True
+    except Exception as e:
+        print(f"DEBUG REKOGNITION Error: Failed to delete FaceId {face_id}: {e}")
+        return False

@@ -25,9 +25,12 @@ const DIAS = [
   { value: '6', label: 'Domingo' },
 ];
 
-const getDiaLabel = (num: number) => DIAS[num]?.label ?? `Día ${num}`;
+const getDiaLabel = (num: number | null | undefined) => {
+  if (num === null || num === undefined) return 'N/A';
+  return DIAS[num]?.label ?? `Día ${num}`;
+};
 
-const emptyForm = { day_of_week: '1', start_time: '07:00', end_time: '08:00' };
+const emptyForm = { day_of_week: '1', start_time: '07:00', end_time: '08:00', is_anytime: false };
 
 export default function HorariosPage() {
   const { data, isLoading } = useHorarios();
@@ -48,9 +51,10 @@ export default function HorariosPage() {
   const openEdit = (h: Schedule) => {
     setEditing(h);
     setFormData({
-      day_of_week: String(h.day_of_week),
-      start_time: h.start_time.slice(0, 5),
-      end_time: h.end_time.slice(0, 5),
+      day_of_week: h.day_of_week !== null ? String(h.day_of_week) : '1',
+      start_time: h.start_time ? h.start_time.slice(0, 5) : '07:00',
+      end_time: h.end_time ? h.end_time.slice(0, 5) : '08:00',
+      is_anytime: h.is_anytime,
     });
     setIsDialogOpen(true);
   };
@@ -58,9 +62,10 @@ export default function HorariosPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      day_of_week: parseInt(formData.day_of_week),
-      start_time: formData.start_time,
-      end_time: formData.end_time,
+      day_of_week: formData.is_anytime ? null : parseInt(formData.day_of_week),
+      start_time: formData.is_anytime ? null : formData.start_time,
+      end_time: formData.is_anytime ? null : formData.end_time,
+      is_anytime: formData.is_anytime,
     };
     try {
       if (editing) {
@@ -90,15 +95,27 @@ export default function HorariosPage() {
   const columns = [
     {
       header: 'Día',
-      accessor: (row: Schedule) => <span className="font-medium">{getDiaLabel(row.day_of_week)}</span>,
+      accessor: (row: Schedule) => (
+        <span className="font-medium">
+          {row.is_anytime ? <span className="text-indigo-600 font-bold">Acceso Total</span> : getDiaLabel(row.day_of_week)}
+        </span>
+      ),
     },
     {
       header: 'Hora inicio',
-      accessor: (row: Schedule) => <span className="font-mono">{formatTimeAMPM(row.start_time)}</span>,
+      accessor: (row: Schedule) => (
+        <span className="font-mono">
+          {row.is_anytime ? <span className="text-indigo-600 font-bold">--:--</span> : formatTimeAMPM(row.start_time || '')}
+        </span>
+      ),
     },
     {
       header: 'Hora fin',
-      accessor: (row: Schedule) => <span className="font-mono">{formatTimeAMPM(row.end_time)}</span>,
+      accessor: (row: Schedule) => (
+        <span className="font-mono">
+          {row.is_anytime ? <span className="text-indigo-600 font-bold">--:--</span> : formatTimeAMPM(row.end_time || '')}
+        </span>
+      ),
     },
     {
       header: 'Acciones',
@@ -133,39 +150,61 @@ export default function HorariosPage() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editing ? 'Editar Horario' : 'Nuevo Horario'}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Día de la semana</Label>
-                <Select value={formData.day_of_week}
-                  onValueChange={v => setFormData({ ...formData, day_of_week: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DIAS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Hora inicio</Label>
-                    {formData.start_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.start_time)}</span>}
-                  </div>
-                  <Input type="time" value={formData.start_time}
-                    onChange={e => setFormData({ ...formData, start_time: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Hora fin</Label>
-                    {formData.end_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.end_time)}</span>}
-                  </div>
-                  <Input type="time" value={formData.end_time}
-                    onChange={e => setFormData({ ...formData, end_time: e.target.value })} required />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex items-center space-x-2 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                <input 
+                  type="checkbox" 
+                  id="is_anytime"
+                  className="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={formData.is_anytime}
+                  onChange={e => setFormData({ ...formData, is_anytime: e.target.checked })}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="is_anytime" className="text-indigo-900 font-bold cursor-pointer">
+                    Acceso Total
+                  </Label>
+                  <p className="text-xs text-indigo-600">
+                    Permite el ingreso en cualquier momento, ignorando restricciones de día y hora.
+                  </p>
                 </div>
               </div>
+
+              {!formData.is_anytime && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="space-y-2">
+                    <Label>Día de la semana</Label>
+                    <Select value={formData.day_of_week}
+                      onValueChange={v => setFormData({ ...formData, day_of_week: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {DIAS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Hora inicio</Label>
+                        {formData.start_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.start_time)}</span>}
+                      </div>
+                      <Input type="time" value={formData.start_time}
+                        onChange={e => setFormData({ ...formData, start_time: e.target.value })} required />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Hora fin</Label>
+                        {formData.end_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.end_time)}</span>}
+                      </div>
+                      <Input type="time" value={formData.end_time}
+                        onChange={e => setFormData({ ...formData, end_time: e.target.value })} required />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
@@ -181,7 +220,10 @@ export default function HorariosPage() {
             </DialogHeader>
             <div className="py-4">
               <p className="text-sm text-slate-600">
-                ¿Estás seguro de que deseas eliminar este horario (<strong>{getDiaLabel(itemToDelete?.day_of_week || 0)} {formatTimeAMPM(itemToDelete?.start_time || '')} - {formatTimeAMPM(itemToDelete?.end_time || '')}</strong>)?
+                ¿Estás seguro de que deseas eliminar este horario (
+                <strong>
+                  {itemToDelete?.is_anytime ? 'Acceso Total' : `${getDiaLabel(itemToDelete?.day_of_week)} ${formatTimeAMPM(itemToDelete?.start_time || '')} - ${formatTimeAMPM(itemToDelete?.end_time || '')}`}
+                </strong>)?
               </p>
               <p className="text-xs text-red-500 mt-2">Esta acción no se puede deshacer.</p>
             </div>

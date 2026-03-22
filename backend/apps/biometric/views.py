@@ -15,8 +15,8 @@ from .models import Biometric
 from .serializers import BiometricSerializer
 
 from apps.users.models import User
-from .services.aws_s3 import upload_images_to_s3
-from .services.aws_rekognition import index_user_faces_from_s3
+from .services.aws_s3 import upload_images_to_s3, delete_image_from_s3
+from .services.aws_rekognition import index_user_faces_from_s3, delete_face_from_collection
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -100,11 +100,24 @@ class BiometricViewSet(viewsets.ModelViewSet):
             except Exception as face_error:
                 warning = f"Imágenes subidas a S3, pero hubo un error en Rekognition: {str(face_error)}"
                 import logging
-                logger = logging.getLogger(__name__)
-                logger.warning(warning)
+            # 3. Clean up previous AWS resources before saving new record
+            # We want to keep only the latest biometric in the cloud to save space/cost
+            previous_bios = Biometric.objects.filter(user=user, is_active=True)
+            for old_bio in previous_bios:
+                try:
+                    # Extract S3 key from URL: https://bucket.s3.region.amazonaws.com/key
+                    if old_bio.storage_url and ".com/" in old_bio.storage_url:
+                        s3_key = old_bio.storage_url.split(".com/")[-1]
+                        delete_image_from_s3(s3_key)
+                    
+                    # Delete face from rekognition
+                    if old_bio.face_id and old_bio.face_id != "PENDING_AWS_REKOGNITION":
+                        delete_face_from_collection(old_bio.face_id)
+                except Exception as cleanup_err:
+                    print(f"DEBUG Cleanup Error: {cleanup_err}")
 
-            # 3. Save Biometric record
-            Biometric.objects.filter(user=user, is_active=True).update(is_active=False)
+            # 4. Save Biometric record
+            previous_bios.update(is_active=False)
 
             biometric = Biometric.objects.create(
                 user=user,
@@ -122,3 +135,21 @@ class BiometricViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def perform_destroy(self, instance):
+        """
+        Cleans up AWS resources when a biometric record is deleted.
+        """
+        try:
+            # Delete from S3
+            if instance.storage_url and ".com/" in instance.storage_url:
+                s3_key = instance.storage_url.split(".com/")[-1]
+                delete_image_from_s3(s3_key)
+            
+            # Delete from Rekognition
+            if instance.face_id and instance.face_id != "PENDING_AWS_REKOGNITION":
+                delete_face_from_collection(instance.face_id)
+        except Exception as e:
+            print(f"DEBUG Destroy Cleanup Error: {e}")
+            
+        instance.delete()

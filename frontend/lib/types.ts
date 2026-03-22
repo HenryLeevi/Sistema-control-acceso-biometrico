@@ -51,10 +51,10 @@ export interface Aula {
 
 export interface Schedule {
   id: string;
-  day_of_week: number;  // 0=Mon … 6=Sun
-  day_label?: string;   // "Lunes", "Martes"… (read-only, from backend)
-  start_time: string;   // "HH:MM:SS"
-  end_time: string;
+  day_of_week: number | null;  // 0=Mon … 6=Sun
+  start_time: string | null;   // "HH:MM:SS"
+  end_time: string | null;
+  is_anytime: boolean;
 }
 
 export interface AccessPermission {
