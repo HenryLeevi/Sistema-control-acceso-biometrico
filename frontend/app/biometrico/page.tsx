@@ -11,7 +11,7 @@ type AuthStage = 'biometrico' | 'pin' | 'otp' | 'exito' | 'denegado';
 type BiometricStatus = 'scanning' | 'detected' | 'validating' | 'success' | 'fail' | 'not_detected';
 
 const AUDITORIA_AULA = '-';
-const SOPORTE_TELEFONO = '+52 55 1234-5678';
+const SOPORTE_TELEFONO = '+503 71112300';
 
 function BiometricoContent() {
   const { toast } = useToast();
@@ -403,8 +403,8 @@ function BiometricoContent() {
                 </div>
               )}
             </div>
-            {/* Switch to PIN if not blocked or for manual bypass */}
-            {bioIntentos < 3 && (
+            {/* Switch to PIN only after failure or manual override if desired (user requested only after 3 fails) */}
+            {bioIntentos >= 3 && (
               <button 
                 onClick={() => {
                   stopCamera();

@@ -62,6 +62,8 @@ class AccessPermissionSerializer(serializers.ModelSerializer):
     aula_code = serializers.CharField(source="aula.code", read_only=True)
     aula_description = serializers.CharField(source="aula.description", read_only=True)
     schedule_display = serializers.CharField(source="schedule.__str__", read_only=True)
+    schedule_day = serializers.IntegerField(source="schedule.day_of_week", read_only=True)
+    schedule_start = serializers.TimeField(source="schedule.start_time", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
     user_nombre = serializers.SerializerMethodField(read_only=True)
 
@@ -71,9 +73,13 @@ class AccessPermissionSerializer(serializers.ModelSerializer):
             "id", "user", "aula", "schedule", "is_active",
             # read-only display extras
             "aula_code", "aula_description", "schedule_display",
+            "schedule_day", "schedule_start",
             "user_email", "user_nombre",
         ]
-        read_only_fields = ["id", "aula_code", "aula_description", "schedule_display", "user_email", "user_nombre"]
+        read_only_fields = [
+            "id", "aula_code", "aula_description", "schedule_display", 
+            "schedule_day", "schedule_start", "user_email", "user_nombre"
+        ]
 
     def get_user_nombre(self, obj):
         return f"{obj.user.nombre} {obj.user.apellido}" if obj.user else ""
@@ -87,6 +93,7 @@ class AccessEventSerializer(serializers.ModelSerializer):
 
     user_nombre = serializers.CharField(source="user.full_name", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
+    aula_code = serializers.CharField(source="aula.code", read_only=True)
 
     class Meta:
         model = AccessEvent
@@ -96,6 +103,7 @@ class AccessEventSerializer(serializers.ModelSerializer):
             "user_nombre",
             "user_email",
             "aula",
+            "aula_code",
             "device",
             "timestamp",
             "method",

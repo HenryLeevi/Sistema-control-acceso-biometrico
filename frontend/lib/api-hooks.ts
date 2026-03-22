@@ -307,8 +307,37 @@ export const useReporte = (filters?: Record<string, string>) => {
   return useQuery({
     queryKey: ['reporte', filters],
     queryFn: async () => {
-      return apiClient<ReporteResumen>('/access/reports/summary/');
+      const params = filters ? '?' + new URLSearchParams(filters).toString() : '';
+      return apiClient<ReporteResumen>(`/access/reports/summary/${params}`);
     },
+  });
+};
+
+export const useExportarEventos = () => {
+  return useMutation({
+    mutationFn: async (filters?: Record<string, string>) => {
+      const params = filters ? '?' + new URLSearchParams(filters).toString() : '';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      
+      const response = await fetch(`${baseUrl}/access/events/export_csv/${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Error al exportar reporte');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte_accesos_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    }
   });
 };
 

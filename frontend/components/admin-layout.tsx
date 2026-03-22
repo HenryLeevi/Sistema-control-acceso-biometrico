@@ -22,14 +22,15 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   // Admin / Subadmin
-  { label: 'Dashboard',        href: '/admin',              icon: LayoutDashboard, roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Usuarios',         href: '/admin/usuarios',     icon: Users,           roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Aulas',            href: '/admin/aulas',        icon: DoorOpen,        roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Horarios',         href: '/admin/horarios',     icon: Clock,           roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Permisos',         href: '/admin/permisos',     icon: ShieldCheck,     roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Reportes',         href: '/admin/reportes',     icon: FileText,        roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Eventos',          href: '/eventos', icon: Fingerprint,     roles: ['ADMIN', 'SUBADMIN'] },
-  { label: 'Alertas',          href: '/alertas', icon: AlertTriangle,   roles: ['ADMIN', 'SUBADMIN'] },
+  { label: 'Dashboard',        href: '/admin',              icon: LayoutDashboard, roles: ['ADMIN'] },
+  { label: 'Dashboard',        href: '/subadmin',           icon: LayoutDashboard, roles: ['SUBADMIN'] },
+  { label: 'Usuarios',         href: '/admin/usuarios',     icon: Users,           roles: ['ADMIN'] },
+  { label: 'Aulas',            href: '/admin/aulas',        icon: DoorOpen,        roles: ['ADMIN'] },
+  { label: 'Horarios',         href: '/admin/horarios',     icon: Clock,           roles: ['ADMIN'] },
+  { label: 'Permisos',         href: '/admin/permisos',     icon: ShieldCheck,     roles: ['ADMIN'] },
+  { label: 'Reportes',         href: '/admin/reportes',     icon: FileText,        roles: ['ADMIN'] },
+  { label: 'Eventos',          href: '/eventos',            icon: Fingerprint,     roles: ['ADMIN'] },
+  { label: 'Alertas',          href: '/alertas',            icon: AlertTriangle,   roles: ['ADMIN'] },
   // Biométrico (Seguridad)
   { label: 'Panel Seguridad',  href: '/biometrico',         icon: LayoutDashboard, roles: ['BIOMETRICO'] },
   { label: 'Pantalla Acceso',  href: '/acceso',             icon: Fingerprint,     roles: ['BIOMETRICO'] },

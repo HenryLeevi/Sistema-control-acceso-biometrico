@@ -67,6 +67,8 @@ export interface AccessPermission {
   aula_code?: string;
   aula_description?: string;
   schedule_display?: string;
+  schedule_day?: number;
+  schedule_start?: string;
   user_email?: string;
   user_nombre?: string;
 }
@@ -78,6 +80,7 @@ export interface AccessEvent {
   user_nombre?: string; // Full name from backend
   user_email?: string;  // Email from backend
   aula: string;     // UUID
+  aula_code?: string; // Human-readable code
   device?: string;  // UUID
   method: 'FACE' | 'PIN' | 'OTP' | 'MANUAL';
   result: 'SUCCESS' | 'DENIED';

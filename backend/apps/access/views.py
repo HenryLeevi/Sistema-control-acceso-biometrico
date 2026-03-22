@@ -12,6 +12,7 @@ ViewSets / APIViews:
 """
 
 from rest_framework import viewsets, status, mixins, filters
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -19,6 +20,15 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
 from drf_spectacular.types import OpenApiTypes
+
+from django.utils import timezone
+from django.db.models import Count, Q
+from django.db.models.functions import TruncHour, TruncDate
+from django.http import HttpResponse
+from datetime import datetime, timedelta
+import csv
+import random
+import string
 
 from .models import Aula, Schedule, AccessPermission, AccessEvent, TeacherOTP
 from .serializers import (
@@ -30,7 +40,6 @@ from .serializers import (
     TeacherOTPSerializer,
 )
 from .services import AccessService, AccessValidationInput, AccessMethod
-from django.utils import timezone
 from apps.users.models import User as LocalUser
 
 
@@ -203,6 +212,30 @@ class AccessEventViewSet(
     ordering_fields = ["timestamp"]
     ordering = ["-timestamp"]
 
+    @action(detail=False, methods=["get"])
+    def export_csv(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="reporte_accesos.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Fecha', 'Usuario', 'Email', 'Aula', 'Método', 'Resultado', 'Alerta', 'Razón'])
+        
+        for event in queryset:
+            writer.writerow([
+                event.id,
+                event.timestamp,
+                event.user_nombre or 'Anónimo',
+                event.user_email or 'N/A',
+                event.aula.code,
+                event.method,
+                event.result,
+                'SÍ' if event.alert_flag else 'NO',
+                event.reason or ''
+            ])
+        
+        return response
+
 
 # ─────────────────────────────────────────
 # Validación de acceso (Raspberry Pi)
@@ -215,13 +248,11 @@ class AccessEventViewSet(
         "**Endpoint principal del dispositivo Raspberry Pi.**\n\n"
         "Recibe un intento de acceso biométrico o PIN y retorna si el acceso es permitido o denegado.\n\n"
         "**Métodos:** `FACE` (facial), `PIN` (contingencia), `MANUAL` (apertura manual)\n\n"
-        "⚠️ Actualmente retorna `501 Not Implemented` — se implementará en Fase 2."
     ),
     request=AccessValidateSerializer,
     responses={
         200: OpenApiResponse(description="Acceso procesado — incluye `result`, `correlation_id`, `event_id`"),
         400: OpenApiResponse(description="Datos de entrada inválidos"),
-        501: OpenApiResponse(description="Lógica de validación pendiente (Fase 2)"),
     },
 )
 class AccessValidateView(APIView):
@@ -254,21 +285,8 @@ class AccessValidateView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        except NotImplementedError:
-            return Response(
-                {
-                    "status": "not_implemented",
-                    "message": (
-                        "Access validation logic is a Phase 2 implementation target. "
-                        "Input schema was validated successfully."
-                    ),
-                    "validated_input": {
-                        "method": validated["method"],
-                        "aula_id": str(validated["aula_id"]),
-                    },
-                },
-                status=status.HTTP_501_NOT_IMPLEMENTED,
-            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
 
 # ─────────────────────────────────────────
@@ -279,14 +297,7 @@ class AccessValidateView(APIView):
     tags=["Access"],
     summary="KPIs del dashboard",
     description=(
-        "Retorna métricas en tiempo real calculadas desde los eventos de acceso del día actual:\n\n"
-        "- `total_accesos_hoy`: total de eventos hoy\n"
-        "- `tasa_exito`: % de accesos permitidos\n"
-        "- `tasa_rechazo`: % de accesos denegados\n"
-        "- `alertas_activas`: eventos con `alert_flag=True` hoy\n"
-        "- `usuarios_activos`: total de usuarios activos en el sistema\n"
-        "- `accesos_por_hora`: distribución horaria del día\n"
-        "- `top_aulas`: top 5 aulas con más accesos"
+        "Retorna métricas en tiempo real calculadas desde los eventos de acceso del día actual."
     ),
     responses={200: OpenApiResponse(description="KPIs calculados exitosamente")},
 )
@@ -296,11 +307,6 @@ class KPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        from django.utils import timezone
-        from django.db.models import Count
-        from django.db.models.functions import TruncHour
-        from apps.users.models import User
-
         today = timezone.now().date()
         events_today = AccessEvent.objects.filter(timestamp__date=today)
 
@@ -332,7 +338,7 @@ class KPIView(APIView):
             "tasa_exito": round(success / total * 100, 1) if total else 0,
             "tasa_rechazo": round(denied / total * 100, 1) if total else 0,
             "alertas_activas": events_today.filter(alert_flag=True).count(),
-            "usuarios_activos": User.objects.filter(is_active=True).count(),
+            "usuarios_activos": LocalUser.objects.filter(is_active=True).count(),
             "accesos_por_hora": accesos_por_hora,
             "top_aulas": [
                 {"aula": item["aula__code"] or "N/A", "cantidad": item["cantidad"]}
@@ -342,34 +348,41 @@ class KPIView(APIView):
 
 
 # ─────────────────────────────────────────
-# Reporte mensual
+# Reporte mensual / Personalizado
 # ─────────────────────────────────────────
 
 @extend_schema(
     tags=["Access"],
-    summary="Resumen de reportes (últimos 30 días)",
+    summary="Resumen de reportes (rango de fechas)",
     description=(
-        "Genera un resumen estadístico de los accesos de los últimos 30 días:\n\n"
-        "- `total_accesos`: total de eventos en el período\n"
-        "- `accesos_permitidos` / `accesos_denegados`: desglose por resultado\n"
-        "- `accesos_por_dia`: serie temporal diaria\n"
-        "- `accesos_por_metodo`: desglose por método (FACE/PIN/MANUAL)"
+        "Genera un resumen estadístico de los accesos en un rango de fechas:\n\n"
+        "- `start_date`: Fecha inicio (YYYY-MM-DD)\n"
+        "- `end_date`: Fecha fin (YYYY-MM-DD)\n"
     ),
+    parameters=[
+        OpenApiParameter("start_date", OpenApiTypes.DATE, description="Fecha de inicio"),
+        OpenApiParameter("end_date", OpenApiTypes.DATE, description="Fecha de fin"),
+    ],
     responses={200: OpenApiResponse(description="Reporte generado exitosamente")},
 )
 class ReporteView(APIView):
-    """GET /api/access/reports/summary/ — Last 30 days report."""
+    """GET /api/access/reports/summary/ — Date-range based report."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        from django.utils import timezone
-        from django.db.models import Count, Q
-        from django.db.models.functions import TruncDate
-        from datetime import timedelta
+        start_str = request.query_params.get('start_date')
+        end_str = request.query_params.get('end_date')
 
-        end = timezone.now()
-        start = end - timedelta(days=30)
+        if start_str and end_str:
+            try:
+                start = timezone.make_aware(datetime.strptime(start_str, '%Y-%m-%d'))
+                end = timezone.make_aware(datetime.strptime(end_str, '%Y-%m-%d')) + timedelta(days=1)
+            except ValueError:
+                return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
+        else:
+            end = timezone.now()
+            start = end - timedelta(days=30)
 
         events = AccessEvent.objects.filter(timestamp__range=(start, end))
         total = events.count()
@@ -389,7 +402,7 @@ class ReporteView(APIView):
         por_metodo = events.values("method").annotate(cantidad=Count("id"))
 
         return Response({
-            "periodo": f"{start.date()} / {end.date()}",
+            "periodo": f"{start.date()} / {end.date() - timedelta(days=1) if start_str else end.date()}",
             "total_accesos": total,
             "accesos_permitidos": permitidos,
             "accesos_denegados": denegados,
@@ -407,10 +420,6 @@ class ReporteView(APIView):
         })
 
 
-from rest_framework.decorators import action
-import random
-import string
-from datetime import timedelta
 
 class TeacherOTPViewSet(
     mixins.CreateModelMixin,
