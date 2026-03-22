@@ -15,8 +15,8 @@ from .models import Biometric
 from .serializers import BiometricSerializer
 
 from apps.users.models import User
-from .services.azure_storage import upload_images
-from .services.azure_face import create_person_and_add_faces
+from .services.aws_s3 import upload_images_to_s3
+from .services.aws_rekognition import index_user_faces_from_s3
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -80,29 +80,45 @@ class BiometricViewSet(viewsets.ModelViewSet):
             return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            # 1. Upload to Blob Storage
-            # We'll keep the first URL as the reference in DB
-            image_urls = upload_images(str(user.id), images)
-            if not image_urls:
-                raise Exception("Failed to upload images to storage.")
+            # 1. Upload to AWS S3
+            upload_results = upload_images_to_s3(str(user.id), images)
+            if not upload_results:
+                raise Exception("Failed to upload images to S3 storage.")
 
-            # 2. Register with Face API
-            user_name = f"{user.nombre} {user.apellido}".strip()
-            face_id = create_person_and_add_faces(user_name, image_urls)
+            # 2. Index faces in AWS Rekognition from S3
+            face_id = "PENDING_AWS_REKOGNITION"
+            warning = None
+            
+            try:
+                s3_keys = [res['key'] for res in upload_results]
+                aws_face_id = index_user_faces_from_s3(str(user.id), s3_keys)
+                
+                if aws_face_id:
+                    face_id = aws_face_id
+                else:
+                    warning = "No se detectaron rostros en las imágenes subidas a S3."
+            except Exception as face_error:
+                warning = f"Imágenes subidas a S3, pero hubo un error en Rekognition: {str(face_error)}"
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(warning)
 
             # 3. Save Biometric record
-            # Deactivate previous active records
             Biometric.objects.filter(user=user, is_active=True).update(is_active=False)
 
             biometric = Biometric.objects.create(
                 user=user,
                 face_id=face_id,
-                storage_url=image_urls[0],  # Save primary image url
+                storage_url=upload_results[0]['url'],
                 is_active=True
             )
 
             serializer = self.get_serializer(biometric)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            response_data = serializer.data
+            if warning:
+                response_data["warning"] = warning
+                
+            return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

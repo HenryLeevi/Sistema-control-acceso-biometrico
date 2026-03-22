@@ -324,7 +324,7 @@ function BiometricoContent() {
                 <div className="flex flex-col items-center gap-2">
                   <div className="flex items-center gap-2 text-yellow-300">
                     <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-yellow-400 animate-spin" />
-                    <span className="text-sm font-medium">Validando con Azure...</span>
+                    <span className="text-sm font-medium">Validando con AWS...</span>
                   </div>
                 </div>
               )}
@@ -497,7 +497,7 @@ function BiometricoContent() {
         </button>
         <div className="flex items-center gap-2 text-xs text-gray-600">
           <Shield className="h-3.5 w-3.5" />
-          <span>Sistema Biométrico v2.0 (Azure AI)</span>
+          <span>Sistema Biométrico v2.0 (AWS Rekognition)</span>
         </div>
       </div>
 

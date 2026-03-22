@@ -78,7 +78,7 @@ class AccessService:
         from apps.users.models import User, PinContingency
         from apps.biometric.models import Biometric
         from apps.access.models import Aula, AccessPermission, AccessEvent, Schedule
-        from apps.biometric.services.azure_face import identify_face
+        from apps.biometric.services.aws_rekognition import search_face_by_image
         
         user = None
         reason = None
@@ -91,17 +91,14 @@ class AccessService:
             # 1. Identify User
             if payload.method == AccessMethod.FACE:
                 try:
-                    # Decode base64 image
+                    # Decode base64 image from device
                     image_data = base64.b64decode(payload.data)
-                    image_stream = io.BytesIO(image_data)
                     
-                    face_id = identify_face(image_stream)
-                    if face_id:
-                        biometric = Biometric.objects.filter(face_id=face_id, is_active=True).first()
-                        if biometric:
-                            user = biometric.user
-                        else:
-                            reason = "Face ID recognized by Azure but no active biometric record found."
+                    found_user_id = search_face_by_image(image_data)
+                    if found_user_id:
+                        user = User.objects.filter(id=found_user_id, is_active=True).first()
+                        if not user:
+                            reason = "Rostro reconocido pero el usuario está inactivo o no existe en DB local."
                     else:
                         reason = "Rostro no reconocido en el sistema."
                 except Exception as e:
