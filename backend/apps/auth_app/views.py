@@ -55,7 +55,7 @@ class LoginView(TokenObtainPairView):
                 roles = ["ADMIN"]
 
         user_data = {
-            "id": str(django_user.pk),
+            "id": str(app_user.id) if 'app_user' in locals() and app_user else str(django_user.pk),
             "username": django_user.username,
             "email": django_user.email,
             "nombre": django_user.first_name or django_user.username,
@@ -116,7 +116,7 @@ class MeView(APIView):
 
         return Response(
             {
-                "id": str(user.pk),
+                "id": str(app_user.id) if 'app_user' in locals() and app_user else str(user.pk),
                 "username": user.username,
                 "email": user.email,
                 "nombre": user.first_name or user.username,
