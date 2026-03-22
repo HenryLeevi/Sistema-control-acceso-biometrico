@@ -36,7 +36,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Schedule
-        fields = ["id", "day_of_week", "day_label", "start_time", "end_time"]
+        fields = ["id", "day_of_week", "day_label", "start_time", "end_time", "is_anytime"]
         read_only_fields = ["id", "day_label"]
 
     def validate(self, data):

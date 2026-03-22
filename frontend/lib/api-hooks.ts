@@ -92,6 +92,20 @@ export const useBiometrics = (userId?: string) => {
   });
 };
 
+export const useDeleteBiometric = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (MOCK_MODE) return;
+      return apiClient<void>(`/biometric/${id}/`, { method: 'DELETE' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['biometrics'] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+    },
+  });
+};
+
 // ── Roles (/api/roles/) ──────────────────────────────
 
 export const useRoles = () => {

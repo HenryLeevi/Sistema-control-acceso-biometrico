@@ -96,9 +96,16 @@ class AccessService:
                     
                     found_user_id = search_face_by_image(image_data)
                     if found_user_id:
+                        # Double check: confirm user exists AND has an active biometric enrollment
+                        from apps.biometric.models import Biometric
                         user = User.objects.filter(id=found_user_id, is_active=True).first()
                         if not user:
                             reason = "Rostro reconocido pero el usuario está inactivo o no existe en DB local."
+                        else:
+                            # Verify local enrollment status
+                            if not Biometric.objects.filter(user=user, is_active=True).exists():
+                                user = None # Revoke identification
+                                reason = "El usuario no tiene un enrolamiento biométrico activo en este momento."
                     else:
                         reason = "Rostro no reconocido en el sistema."
                 except Exception as e:
@@ -141,17 +148,26 @@ class AccessService:
                 current_time = now_time.time()
                 current_day = now_time.weekday() # 0 = Monday
                 
-                # Check for active permissions overlapping current day and time
+                # 2.1 Check for active permissions
                 permissions = AccessPermission.objects.filter(
                     user=user,
                     aula=aula,
-                    is_active=True,
-                    schedule__day_of_week=current_day,
-                    schedule__start_time__lte=current_time,
-                    schedule__end_time__gte=current_time
+                    is_active=True
                 )
                 
-                if permissions.exists():
+                valid_access = False
+                for perm in permissions:
+                    sched = perm.schedule
+                    # Check if it's an "Anytime" schedule or if it matches the current time/day
+                    if sched.is_anytime:
+                        valid_access = True
+                        break
+                    if sched.day_of_week == current_day and \
+                       sched.start_time <= current_time <= sched.end_time:
+                        valid_access = True
+                        break
+                
+                if valid_access:
                     result = AccessResult.SUCCESS
                     # Trigger device to open
                     aula.desired_state = Aula.DoorState.OPEN

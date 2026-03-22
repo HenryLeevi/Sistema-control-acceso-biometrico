@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   useUsuarios, useCreateUsuario, useUpdateUsuario, useDeleteUsuario,
   useRoles, useUserRoles, useCreateUserRole, useDeleteUserRole,
-  useEnrolarBiometria, useCreatePinContingency, useBiometrics,
+  useEnrolarBiometria, useCreatePinContingency, useBiometrics, useDeleteBiometric,
 } from '@/lib/api-hooks';
 import { WebcamCapture } from '@/components/webcam-capture';
 import { User, AppRole, UserRole } from '@/lib/types';
@@ -59,6 +59,7 @@ export default function UsuariosPage() {
   const [bioPreviews, setBioPreviews] = useState<string[]>([]);
   const [selectedForBio, setSelectedForBio] = useState<User | null>(null);
   const { data: biometricsData } = useBiometrics(selectedForBio?.id);
+  const deleteBiometric = useDeleteBiometric();
   const [pendingRoleToAdd, setPendingRoleToAdd] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -287,16 +288,26 @@ export default function UsuariosPage() {
   };
 
   const handleBio = async () => {
-    if (!selectedForBio || !bioFiles?.length) {
-      toast({ title: 'Selecciona al menos una imagen', variant: 'destructive' });
-      return;
-    }
+    if (!selectedForBio) return;
+    
+    // Check if we are deleting the existing one and not adding new ones
+    const hasExistingInPreviews = bioPreviews.some(url => url.startsWith('http'));
+    const activeBioRecord = biometricsData?.results?.[0];
+
     try {
-      await enrolarBiometria.mutateAsync({ usuarioId: selectedForBio.id, imagenes: bioFiles });
-      toast({ title: 'Biometría enrolada correctamente' });
+      if (bioFiles.length > 0) {
+        // Standard enrollment (replaces previous one automatically in backend)
+        await enrolarBiometria.mutateAsync({ usuarioId: selectedForBio.id, imagenes: bioFiles });
+        toast({ title: 'Biometría enrolada correctamente' });
+      } else if (!hasExistingInPreviews && activeBioRecord) {
+        // Manual deletion of the only existing photo
+        await deleteBiometric.mutateAsync(activeBioRecord.id);
+        toast({ title: 'Biometría eliminada del sistema y AWS' });
+      }
+      
       setIsBioDialogOpen(false);
     } catch {
-      toast({ title: 'Error al enrolar biometría', variant: 'destructive' });
+      toast({ title: 'Error al procesar biometría', variant: 'destructive' });
     }
   };
 
@@ -373,12 +384,12 @@ export default function UsuariosPage() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? 'Editar Usuario' : 'Nuevo Usuario'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>Nombre</Label>
                   <Input value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} required />
@@ -388,7 +399,7 @@ export default function UsuariosPage() {
                   <Input value={formData.apellido} onChange={e => setFormData({ ...formData, apellido: e.target.value })} required />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>Usuario (login)</Label>
                   <Input
@@ -441,7 +452,7 @@ export default function UsuariosPage() {
                   maxLength={10}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>Residencia</Label>
                   <Input 
@@ -532,7 +543,7 @@ export default function UsuariosPage() {
 
         {/* Biometría Dialog */}
         <Dialog open={isBioDialogOpen} onOpenChange={setIsBioDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Enrolar Biometría</DialogTitle>
             </DialogHeader>
@@ -607,9 +618,13 @@ export default function UsuariosPage() {
                 <Button variant="outline" onClick={() => setIsBioDialogOpen(false)}>Cancelar</Button>
                 <Button 
                   onClick={handleBio} 
-                  disabled={enrolarBiometria.isPending || bioFiles.length === 0}
+                  disabled={
+                    enrolarBiometria.isPending || 
+                    deleteBiometric.isPending ||
+                    (bioFiles.length === 0 && bioPreviews.length === (biometricsData?.results?.[0]?.storage_url ? 1 : 0))
+                  }
                 >
-                  {enrolarBiometria.isPending ? 'Procesando...' : 'Guardar Biometría'}
+                  {enrolarBiometria.isPending || deleteBiometric.isPending ? 'Procesando...' : 'Guardar Biometría'}
                 </Button>
               </div>
             </div>

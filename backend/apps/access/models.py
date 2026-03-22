@@ -67,9 +67,13 @@ class Schedule(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    day_of_week = models.IntegerField(choices=DAY_CHOICES)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    day_of_week = models.IntegerField(choices=DAY_CHOICES, null=True, blank=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    is_anytime = models.BooleanField(
+        default=False, 
+        help_text="Si está marcado, permite el acceso en cualquier momento (ignora día y hora)."
+    )
 
     class Meta:
         db_table = "schedules"
@@ -77,6 +81,8 @@ class Schedule(models.Model):
         verbose_name_plural = "Horarios"
 
     def __str__(self):
+        if self.is_anytime:
+            return "Acceso Total"
         return f"{self.get_day_of_week_display()} {self.start_time}–{self.end_time}"
 
 

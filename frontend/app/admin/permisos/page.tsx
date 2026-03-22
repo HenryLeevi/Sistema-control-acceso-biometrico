@@ -184,7 +184,9 @@ export default function PermisosPage() {
                   <SelectContent>
                     {horarios.map(h => (
                       <SelectItem key={h.id} value={h.id}>
-                        {DIAS[h.day_of_week]} {h.start_time.slice(0, 5)}–{h.end_time.slice(0, 5)}
+                        {h.is_anytime 
+                          ? 'Acceso Total' 
+                          : `${DIAS[h.day_of_week ?? 0]} ${(h.start_time || '').slice(0, 5)}–${(h.end_time || '').slice(0, 5)}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

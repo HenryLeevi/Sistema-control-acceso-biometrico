@@ -39,3 +39,17 @@ def upload_images_to_s3(user_id, image_files):
         })
         
     return results
+
+def delete_image_from_s3(key):
+    """
+    Deletes an object from S3 given its key.
+    """
+    s3_client = get_s3_client()
+    bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+    try:
+        s3_client.delete_object(Bucket=bucket_name, Key=key)
+        print(f"DEBUG S3: Successfully deleted key {key}")
+        return True
+    except Exception as e:
+        print(f"DEBUG S3 Error: Failed to delete key {key}: {e}")
+        return False
