@@ -213,7 +213,6 @@ function BiometricoContent() {
   };
 
   const handleOTPSubmit = async () => {
-  const handleOTPSubmit = async () => {
     if (otpValue.length === 6) {
       isValidatingRef.current = true;
       try {
