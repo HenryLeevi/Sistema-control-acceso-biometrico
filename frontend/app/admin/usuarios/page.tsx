@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   useUsuarios, useCreateUsuario, useUpdateUsuario, useDeleteUsuario,
   useRoles, useUserRoles, useCreateUserRole, useDeleteUserRole,
-  useEnrolarBiometria, useCreatePinContingency,
+  useEnrolarBiometria, useCreatePinContingency, useBiometrics,
 } from '@/lib/api-hooks';
 import { WebcamCapture } from '@/components/webcam-capture';
 import { User, AppRole, UserRole } from '@/lib/types';
@@ -56,7 +56,9 @@ export default function UsuariosPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [formData, setFormData] = useState(emptyForm);
   const [bioFiles, setBioFiles] = useState<File[]>([]);
+  const [bioPreviews, setBioPreviews] = useState<string[]>([]);
   const [selectedForBio, setSelectedForBio] = useState<User | null>(null);
+  const { data: biometricsData } = useBiometrics(selectedForBio?.id);
   const [pendingRoleToAdd, setPendingRoleToAdd] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -67,6 +69,42 @@ export default function UsuariosPage() {
       setEditingUserId(undefined);
     }
   }, [isDialogOpen]);
+
+  // Clean up blob URLs when bio dialog closes
+  useEffect(() => {
+    if (!isBioDialogOpen) {
+      bioPreviews.forEach(url => {
+        if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+      });
+      setBioPreviews([]);
+      setBioFiles([]);
+    }
+  }, [isBioDialogOpen]);
+
+  // Load existing biometric photo into previews
+  useEffect(() => {
+    if (isBioDialogOpen && biometricsData?.results?.length) {
+      const activeBio = biometricsData.results[0];
+      if (activeBio.storage_url) {
+        setBioPreviews([activeBio.storage_url]);
+      }
+    }
+  }, [isBioDialogOpen, biometricsData]);
+
+  const handleFileChange = (files: FileList | File[] | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files);
+    setBioFiles(newFiles);
+    
+    // Revoke old blob previews
+    bioPreviews.forEach(url => {
+      if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    });
+    
+    // Create new previews
+    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+    setBioPreviews(newPreviews);
+  };
 
   const usuarios = data?.results || [];
   const roles = rolesData?.results || [];
@@ -260,6 +298,18 @@ export default function UsuariosPage() {
     } catch {
       toast({ title: 'Error al enrolar biometría', variant: 'destructive' });
     }
+  };
+
+  const removeBioFile = (index: number) => {
+    const newFiles = [...bioFiles];
+    newFiles.splice(index, 1);
+    setBioFiles(newFiles);
+
+    const newPreviews = [...bioPreviews];
+    const url = newPreviews[index];
+    if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    newPreviews.splice(index, 1);
+    setBioPreviews(newPreviews);
   };
 
   const togglePendingRole = (roleName: string) => {
@@ -494,28 +544,72 @@ export default function UsuariosPage() {
                 </div>
               )}
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Imágenes del rostro (Desde archivo)</Label>
-                  <Input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
-                    onChange={e => e.target.files && setBioFiles(Array.from(e.target.files))} 
-                  />
+                <div className="space-y-3">
+                  <Label className="text-slate-700 font-semibold mb-2 block text-center">Imágenes del rostro</Label>
+                  
+                  <div className="flex flex-col items-center gap-4">
+                    {/* Stylized Upload Button */}
+                    <label 
+                      htmlFor="bio-upload"
+                      className="w-full cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-indigo-200 bg-indigo-50/30 rounded-xl p-8 hover:bg-indigo-50 hover:border-indigo-400 transition-all group"
+                    >
+                      <div className="bg-indigo-100 p-3 rounded-full text-indigo-600 mb-3 group-hover:scale-110 transition-transform">
+                        <Upload className="h-6 w-6" />
+                      </div>
+                      <span className="text-sm font-bold text-indigo-700">Presiona para elegir archivos</span>
+                      <p className="text-xs text-indigo-500 mt-1">Recomendado: 3 fotos de frente</p>
+                      <input 
+                        id="bio-upload"
+                        type="file" 
+                        accept="image/*" 
+                        multiple 
+                        className="hidden"
+                        onChange={e => handleFileChange(e.target.files)} 
+                      />
+                    </label>
+
+                    {/* Previews Grid */}
+                    {bioPreviews.length > 0 && (
+                      <div className="grid grid-cols-3 gap-3 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {bioPreviews.map((url, idx) => {
+                          const isExisting = url.startsWith('http');
+                          return (
+                            <div key={url} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100 group/thumb">
+                              <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                              {isExisting && (
+                                <div className="absolute inset-x-0 bottom-0 bg-indigo-600/80 text-white text-[10px] font-bold text-center py-0.5">
+                                  FOTO ACTUAL
+                                </div>
+                              )}
+                              <button 
+                                onClick={() => removeBioFile(idx)}
+                                className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="relative text-center text-xs font-medium text-slate-500 py-2">
                   <span className="bg-white px-2 relative z-10">O usar cámara web</span>
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t"></div></div>
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
                 </div>
 
-                <WebcamCapture onSave={(files) => setBioFiles(files)} maxPhotos={3} />
+                <WebcamCapture onSave={(files) => handleFileChange(files)} maxPhotos={3} />
               </div>
               
-              <div className="flex justify-end gap-2 pt-4">
+              <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setIsBioDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleBio} disabled={enrolarBiometria.isPending}>
-                  {enrolarBiometria.isPending ? 'Procesando...' : 'Enrolar'}
+                <Button 
+                  onClick={handleBio} 
+                  disabled={enrolarBiometria.isPending || bioFiles.length === 0}
+                >
+                  {enrolarBiometria.isPending ? 'Procesando...' : 'Guardar Biometría'}
                 </Button>
               </div>
             </div>

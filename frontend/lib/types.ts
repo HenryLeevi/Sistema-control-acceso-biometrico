@@ -140,3 +140,12 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
 }
+
+export interface Biometric {
+  id: string;
+  user: string;
+  face_id: string;
+  storage_url: string;
+  is_active: boolean;
+  created_at: string;
+}

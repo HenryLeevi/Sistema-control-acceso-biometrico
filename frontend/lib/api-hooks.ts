@@ -3,7 +3,7 @@ import { apiClient, apiClientFormData } from './api-client';
 import { MockAPI } from './mock-data';
 import {
   User, Aula, Schedule, AccessPermission, AccessEvent, AppRole, UserRole,
-  KPIData, ReporteResumen, PaginatedResponse, OTPCode,
+  KPIData, ReporteResumen, PaginatedResponse, OTPCode, Biometric,
 } from './types';
 
 const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
@@ -77,6 +77,18 @@ export const useEnrolarBiometria = () => {
       return apiClientFormData<{ success: boolean; message: string }>(`/biometric/`, formData);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
+  });
+};
+
+export const useBiometrics = (userId?: string) => {
+  return useQuery({
+    queryKey: ['biometrics', userId],
+    queryFn: async () => {
+      if (MOCK_MODE) return { results: [] as Biometric[], count: 0, next: null, previous: null };
+      const url = userId ? `/biometric/?user=${userId}&is_active=true` : '/biometric/';
+      return apiClient<PaginatedResponse<Biometric>>(url);
+    },
+    enabled: !!userId,
   });
 };
 
