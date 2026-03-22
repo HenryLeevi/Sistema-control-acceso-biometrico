@@ -242,14 +242,14 @@ CORS_ALLOW_CREDENTIALS = True
 # ─────────────────────────────────────────
 # Azure AI Face (loaded from env — no defaults)
 # ─────────────────────────────────────────
-AZURE_FACE_ENDPOINT = os.getenv("AZURE_FACE_ENDPOINT", "")
-AZURE_FACE_SUBSCRIPTION_KEY = os.getenv("AZURE_FACE_SUBSCRIPTION_KEY", "")
-AZURE_FACE_PERSON_GROUP_ID = os.getenv("AZURE_FACE_PERSON_GROUP_ID", "")
+AZURE_FACE_ENDPOINT = os.getenv("AZURE_FACE_ENDPOINT", "").strip()
+AZURE_FACE_SUBSCRIPTION_KEY = os.getenv("AZURE_FACE_SUBSCRIPTION_KEY", "").strip()
+AZURE_FACE_PERSON_GROUP_ID = os.getenv("AZURE_FACE_PERSON_GROUP_ID", "").strip()
 
 # ─────────────────────────────────────────
 # Azure Blob Storage
 # ─────────────────────────────────────────
-AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "")
-AZURE_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_STORAGE_ACCOUNT_KEY", "")
-AZURE_STORAGE_CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "biometric-images")
-AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "")
+AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "").strip()
+AZURE_STORAGE_ACCOUNT_KEY = os.getenv("AZURE_STORAGE_ACCOUNT_KEY", "").strip()
+AZURE_STORAGE_CONTAINER_NAME = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "biometric-images").strip()
+AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING", "").strip()
