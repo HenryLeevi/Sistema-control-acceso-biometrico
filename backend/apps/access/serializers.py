@@ -14,6 +14,8 @@ from .models import Aula, Schedule, AccessPermission, AccessEvent
 
 
 class AulaSerializer(serializers.ModelSerializer):
+    device_id = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Aula
         fields = [
@@ -23,8 +25,15 @@ class AulaSerializer(serializers.ModelSerializer):
             "is_active",
             "desired_state",
             "actual_state",
+            "device_id",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "device_id"]
+
+    def get_device_id(self, obj):
+        try:
+            return str(obj.lock.device.id)
+        except Exception:
+            return None
 
     def validate(self, data):
         """desired_state and actual_state are independent — no cross-validation needed here."""
