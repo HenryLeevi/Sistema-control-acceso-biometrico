@@ -87,6 +87,7 @@ class AccessEventSerializer(serializers.ModelSerializer):
 
     user_nombre = serializers.CharField(source="user.full_name", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
+    aula_code = serializers.CharField(source="aula.code", read_only=True)
 
     class Meta:
         model = AccessEvent

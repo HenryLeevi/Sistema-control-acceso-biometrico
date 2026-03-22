@@ -25,6 +25,7 @@ export interface User {
   // Present in login/me response — not in base UserSerializer
   username?: string;
   roles?: Role[];
+  local_user_id?: string | null;
 }
 
 export interface AppRole {
@@ -78,6 +79,7 @@ export interface AccessEvent {
   user_nombre?: string; // Full name from backend
   user_email?: string;  // Email from backend
   aula: string;     // UUID
+  aula_code?: string; // Code from backend
   device?: string;  // UUID
   method: 'FACE' | 'PIN' | 'OTP' | 'MANUAL';
   result: 'SUCCESS' | 'DENIED';

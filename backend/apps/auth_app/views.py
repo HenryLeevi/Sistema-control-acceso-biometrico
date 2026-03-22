@@ -63,6 +63,7 @@ class LoginView(TokenObtainPairView):
             "is_active": django_user.is_active,
             "created_at": django_user.date_joined.isoformat(),
             "roles": roles,
+            "local_user_id": str(app_user.id) if 'app_user' in locals() else None,
         }
 
         return Response(
@@ -124,5 +125,6 @@ class MeView(APIView):
                 "is_active": user.is_active,
                 "created_at": user.date_joined.isoformat(),
                 "roles": roles,
+                "local_user_id": str(app_user.id) if 'app_user' in locals() else None,
             }
         )

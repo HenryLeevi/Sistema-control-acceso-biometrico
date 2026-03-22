@@ -32,7 +32,7 @@ function horaToMin(h: string) {
 export default function DocenteDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { data: permisosData } = usePermisos(user?.id);
+  const { data: permisosData } = usePermisos(user?.local_user_id || undefined);
   const { data: horariosData } = useHorarios();
   const generarOTP = useGenerarOTP();
 
