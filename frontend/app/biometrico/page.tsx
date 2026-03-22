@@ -193,13 +193,30 @@ function BiometricoContent() {
     }
   };
 
-  const handleOTPSubmit = () => {
+  const handleOTPSubmit = async () => {
     if (otpValue.length === 6) {
-      if (otpValue === '000000') {
-        setStage('exito');
-      } else {
-        toast({ title: '❌ Código OTP incorrecto', variant: 'destructive' });
-        setOtpValue('');
+      if (!currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') {
+        toast({ title: 'Error', description: 'Aula no identificada', variant: 'destructive' });
+        return;
+      }
+
+      try {
+        const res = await validateAccess.mutateAsync({
+          method: 'OTP',
+          data: otpValue,
+          aula_id: currentAulaId
+        });
+
+        if (res.result === 'SUCCESS') {
+          setAuthUserNombre(res.user_full_name || 'Usuario');
+          setStage('exito');
+        } else {
+          toast({ title: '❌ Código OTP inválido', description: res.reason || 'Código expirado o ya usado', variant: 'destructive' });
+          setOtpValue('');
+        }
+      } catch (err) {
+        console.error(err);
+        toast({ title: 'Error de red', description: 'No se pudo verificar el código OTP', variant: 'destructive' });
       }
     }
   };

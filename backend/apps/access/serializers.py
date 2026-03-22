@@ -10,7 +10,7 @@ Serializers:
 """
 
 from rest_framework import serializers
-from .models import Aula, Schedule, AccessPermission, AccessEvent
+from .models import Aula, Schedule, AccessPermission, AccessEvent, TeacherOTP
 
 
 class AulaSerializer(serializers.ModelSerializer):
@@ -114,6 +114,7 @@ class AccessValidateSerializer(serializers.Serializer):
     METHOD_CHOICES = [
         ("FACE", "Face Recognition"),
         ("PIN", "PIN Contingency"),
+        ("OTP", "Teacher OTP"),
         ("MANUAL", "Manual Override"),
     ]
 
@@ -130,3 +131,11 @@ class AccessValidateSerializer(serializers.Serializer):
                 "El aula especificada no existe o no está activa."
             )
         return value
+
+
+class TeacherOTPSerializer(serializers.ModelSerializer):
+    from .models import TeacherOTP
+    class Meta:
+        model = TeacherOTP
+        fields = ["id", "code", "created_at", "expires_at", "is_used"]
+        read_only_fields = ["id", "code", "created_at", "expires_at", "is_used"]

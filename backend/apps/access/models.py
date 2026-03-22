@@ -136,6 +136,7 @@ class AccessEvent(models.Model):
     class Method(models.TextChoices):
         FACE = "FACE", "Reconocimiento Facial"
         PIN = "PIN", "PIN de Contingencia"
+        OTP = "OTP", "Código de Acceso (OTP)"
         MANUAL = "MANUAL", "Manual"
 
     class Result(models.TextChoices):
@@ -184,3 +185,29 @@ class AccessEvent(models.Model):
 
     def __str__(self):
         return f"[{self.method}] {self.result} — {self.aula} @ {self.timestamp}"
+
+
+class TeacherOTP(models.Model):
+    """
+    Temporary 6-digit access code for teachers.
+    Valid for a short window (e.g. 10 minutes).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="teacher_otps",
+    )
+    code = models.CharField(max_length=6, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "teacher_otps"
+        verbose_name = "OTP de Docente"
+        verbose_name_plural = "OTPs de Docentes"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"OTP {self.code} for {self.user} (Used: {self.is_used})"

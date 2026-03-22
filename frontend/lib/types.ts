@@ -79,7 +79,7 @@ export interface AccessEvent {
   user_email?: string;  // Email from backend
   aula: string;     // UUID
   device?: string;  // UUID
-  method: 'FACE' | 'PIN' | 'MANUAL';
+  method: 'FACE' | 'PIN' | 'OTP' | 'MANUAL';
   result: 'SUCCESS' | 'DENIED';
   reason?: string;
   alert_flag: boolean;
@@ -99,10 +99,10 @@ export interface Alerta {
 }
 
 export interface OTPCode {
-  codigo: string;
-  expira_en: string;
-  usuario_id: string;
-  valido: boolean;
+  id: string;
+  code: string;
+  expires_at: string;
+  message?: string;
 }
 
 export interface KPIData {

@@ -292,7 +292,7 @@ export const useDeletePermiso = () => {
 
 export const useValidateAccess = () => {
   return useMutation({
-    mutationFn: async (payload: { method: 'FACE' | 'PIN', data: string, aula_id: string, device_id?: string }) => {
+    mutationFn: async (payload: { method: 'FACE' | 'PIN' | 'OTP', data: string, aula_id: string, device_id?: string }) => {
       if (MOCK_MODE) {
         // Simple mock response
         return { result: 'SUCCESS', reason: null };
@@ -366,7 +366,7 @@ export const useGenerarOTP = () => {
   return useMutation({
     mutationFn: async () => {
       if (MOCK_MODE) return MockAPI.generarOTP();
-      return apiClient<OTPCode>('/users/otp/generate/', { method: 'POST' });
+      return apiClient<OTPCode>('/access/otps/generate/', { method: 'POST' });
     },
   });
 };

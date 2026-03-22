@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class AccessMethod(str, Enum):
     FACE = "FACE"
     PIN = "PIN"
+    OTP = "OTP"
     MANUAL = "MANUAL"
 
 
@@ -132,6 +133,24 @@ class AccessService:
                         
                 if not user:
                     reason = "PIN inválido o expirado."
+
+            elif payload.method == AccessMethod.OTP:
+                # payload.data contains the 6-digit OTP code
+                from apps.access.models import TeacherOTP
+                now = timezone.now()
+                otp_record = TeacherOTP.objects.filter(
+                    code=payload.data,
+                    is_used=False,
+                    expires_at__gt=now
+                ).select_related("user").first()
+                
+                if otp_record:
+                    user = otp_record.user
+                    # Mark as used immediately to prevent reuse
+                    otp_record.is_used = True
+                    otp_record.save()
+                else:
+                    reason = "Código OTP inválido, ya usado o expirado."
                     
             elif payload.method == AccessMethod.MANUAL:
                 # Placeholder for manual override
