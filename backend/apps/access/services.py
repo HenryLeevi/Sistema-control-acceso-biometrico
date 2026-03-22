@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from enum import Enum
 from django.utils import timezone
 from django.contrib.auth.hashers import check_password
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +158,31 @@ class AccessService:
                     # Trigger device to open
                     aula.desired_state = Aula.DoorState.OPEN
                     aula.save()
-                    # TODO: Emit WebSocket event to the device channel here if implemented
+                    
+                    # Emit WebSocket event to the device channel
+                    try:
+                        from apps.devices.models import Lock
+                        lock = Lock.objects.filter(aula=aula, is_active=True).first()
+                        if lock:
+                            channel_layer = get_channel_layer()
+                            group_name = f"device_{lock.device.id}"
+                            
+                            async_to_sync(channel_layer.group_send)(
+                                group_name,
+                                {
+                                    "type": "device_command",
+                                    "payload": {
+                                        "action": "OPEN_DOOR",
+                                        "lock_id": str(lock.id),
+                                        "aula_code": aula.code,
+                                        "gpio_pin": lock.gpio_pin,
+                                        "duration": 5  # Seconds to stay open
+                                    }
+                                }
+                            )
+                            logger.info(f"Sent OPEN_DOOR command to device {lock.device.id} for Aula {aula.code}")
+                    except Exception as ws_err:
+                        logger.error(f"Failed to emit WebSocket command: {ws_err}")
                 else:
                     reason = "Usuario identificado pero no tiene permiso activo para esta Aula en este horario."
                     

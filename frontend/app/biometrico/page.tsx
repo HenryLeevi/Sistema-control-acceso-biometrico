@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Phone, Shield, RefreshCw, CheckCircle, XCircle, AlertCircle, Fingerprint, Hash, Key } from 'lucide-react';
+import { Phone, Shield, RefreshCw, CheckCircle, XCircle, AlertCircle, Fingerprint, Hash, Key, DoorOpen, DoorClosed } from 'lucide-react';
 import { RoleGuard } from '@/components/role-guard';
 import { useAulas, useValidateAccess } from '@/lib/api-hooks';
+import { useDeviceStatus } from '@/hooks/use-device-status';
 
 type AuthStage = 'biometrico' | 'pin' | 'otp' | 'exito' | 'denegado';
 type BiometricStatus = 'scanning' | 'detected' | 'validating' | 'success' | 'fail' | 'not_detected';
@@ -14,11 +15,19 @@ const SOPORTE_TELEFONO = '+52 55 1234-5678';
 
 function BiometricoContent() {
   const { toast } = useToast();
-  const { data: aulasData } = useAulas();
+  const { data: aulasData, refetch: refetchAulas } = useAulas();
   const validateAccess = useValidateAccess();
   
-  // We'll just grab the first aula as the current device location for this demo
-  const currentAulaId = aulasData?.results?.[0]?.id || '00000000-0000-0000-0000-000000000000';
+  const currentAula = aulasData?.results?.[0] as any;
+  const currentAulaId = currentAula?.id || '00000000-0000-0000-0000-000000000000';
+  const deviceStatus = useDeviceStatus(currentAula?.device_id);
+
+  // Sync with WebSocket for instant updates
+  useEffect(() => {
+    if (deviceStatus) {
+      refetchAulas();
+    }
+  }, [deviceStatus, refetchAulas]);
 
   const [stage, setStage] = useState<AuthStage>('biometrico');
   const [bioStatus, setBioStatus] = useState<BiometricStatus>('scanning');
@@ -34,6 +43,7 @@ function BiometricoContent() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isValidatingRef = useRef(false);
 
   // Stop camera helper
   const stopCamera = () => {
@@ -60,8 +70,9 @@ function BiometricoContent() {
 
   // Attempt Face Validation
   const captureAndValidate = async () => {
-    if (!videoRef.current || !canvasRef.current || !currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') return;
+    if (isValidatingRef.current || !videoRef.current || !canvasRef.current || !currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') return;
     
+    isValidatingRef.current = true;
     setBioStatus('validating');
     
     // Draw to canvas and get base64
@@ -86,6 +97,8 @@ function BiometricoContent() {
       if (res.result === 'SUCCESS') {
         setBioStatus('success');
         setAuthUserNombre(res.user_full_name || 'Usuario');
+        // Refresh aula state to show it opening
+        setTimeout(() => refetchAulas(), 500);
         setTimeout(() => setStage('exito'), 1000);
       } else {
         handleBioFail(res.reason || 'Rostro no verificado');
@@ -93,6 +106,8 @@ function BiometricoContent() {
     } catch (err) {
       console.error(err);
       handleBioFail('Error de red al validar rostro');
+    } finally {
+      isValidatingRef.current = false;
     }
   };
 
@@ -161,11 +176,12 @@ function BiometricoContent() {
   };
 
   const handlePinSubmit = async () => {
-    const intento = pinIntentos + 1;
-    if (!currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') {
-      toast({ title: 'Error', description: 'Aula no cargada aún', variant: 'destructive' });
+    if (isValidatingRef.current || !currentAulaId || currentAulaId === '00000000-0000-0000-0000-000000000000') {
       return;
     }
+    
+    isValidatingRef.current = true;
+    const intento = pinIntentos + 1;
     
     try {
       const res = await validateAccess.mutateAsync({
@@ -176,6 +192,7 @@ function BiometricoContent() {
       
       if (res.result === 'SUCCESS') {
         setAuthUserNombre(res.user_full_name || 'Usuario');
+        refetchAulas();
         setStage('exito');
       } else {
         setPinIntentos(intento);
@@ -190,6 +207,8 @@ function BiometricoContent() {
     } catch (err) {
       console.error(err);
       toast({ title: 'Error', description: 'No se pudo validar el PIN', variant: 'destructive' });
+    } finally {
+      isValidatingRef.current = false;
     }
   };
 
@@ -231,13 +250,35 @@ function BiometricoContent() {
             <p className="text-sm font-semibold">{aulasData?.results?.[0]?.description || AUDITORIA_AULA}</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400">
-            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}
-          </p>
-          <p className="text-sm font-mono font-bold text-blue-400">
-            {new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">Estado Puerta</p>
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border ${
+              currentAula?.actual_state === 'OPEN' 
+                ? 'bg-green-500/10 border-green-500/30 text-green-400' 
+                : 'bg-red-500/10 border-red-500/30 text-red-500'
+            }`}>
+              {currentAula?.actual_state === 'OPEN' ? (
+                <>
+                  <DoorOpen className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold">ABIERTA</span>
+                </>
+              ) : (
+                <>
+                  <DoorClosed className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold">CERRADA</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-400">
+              {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short' })}
+            </p>
+            <p className="text-sm font-mono font-bold text-blue-400">
+              {new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -455,7 +496,11 @@ function BiometricoContent() {
             <div>
               <h2 className="text-2xl font-bold text-green-400">Acceso Permitido</h2>
               <p className="text-lg font-medium text-white mb-2">{authUserNombre}</p>
-              <p className="text-gray-400 mt-1">{aulasData?.results?.[0]?.description || AUDITORIA_AULA}</p>
+              <div className="flex items-center justify-center gap-2 text-blue-300 mt-2">
+                <DoorOpen className="h-5 w-5 animate-pulse" />
+                <span className="text-sm font-semibold italic">Abriendo puerta...</span>
+              </div>
+              <p className="text-gray-400 mt-4">{currentAula?.description || AUDITORIA_AULA}</p>
             </div>
             <button
                onClick={handleReset}

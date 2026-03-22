@@ -13,8 +13,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
-from .models import Device
-from .serializers import DeviceSerializer
+from .models import Device, Lock
+from .serializers import DeviceSerializer, LockSerializer
 
 
 @extend_schema_view(
@@ -36,8 +36,22 @@ from .serializers import DeviceSerializer
 class DeviceViewSet(viewsets.ModelViewSet):
     """CRUD for physical edge devices (Raspberry Pi)."""
 
-    queryset = Device.objects.all().order_by("name")
+    queryset = Device.objects.all().prefetch_related("locks").order_by("name")
     serializer_class = DeviceSerializer
+    permission_classes = [IsAuthenticated]
+
+
+@extend_schema_view(
+    list=extend_schema(tags=["Devices"], summary="Listar cerraduras"),
+    create=extend_schema(tags=["Devices"], summary="Registrar cerradura"),
+    retrieve=extend_schema(tags=["Devices"], summary="Obtener cerradura por ID"),
+    update=extend_schema(tags=["Devices"], summary="Actualizar cerradura"),
+    destroy=extend_schema(tags=["Devices"], summary="Eliminar cerradura"),
+)
+class LockViewSet(viewsets.ModelViewSet):
+    """CRUD for physical locks (Servos)."""
+    queryset = Lock.objects.all().select_related("aula", "device")
+    serializer_class = LockSerializer
     permission_classes = [IsAuthenticated]
 
 
