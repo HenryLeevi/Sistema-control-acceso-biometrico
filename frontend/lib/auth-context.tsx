@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Role, AuthResponse, normalizeRole } from './types';
 import { apiClient, setTokens, clearTokens, getAccessToken } from './api-client';
-import { MockAPI } from './mock-data';
 
 interface AuthContextType {
   user: User | null;
@@ -17,10 +16,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
-  ? true
-  : process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -31,18 +26,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = getAccessToken();
       if (token) {
         try {
-          let userData: User;
-          if (MOCK_MODE) {
-            userData = await MockAPI.getMe();
-          } else {
-            // GET /api/auth/me/ returns user data + roles
-            const meData = await apiClient<User & { roles?: string[] }>('/auth/me/');
-            // Normalize roles to uppercase
-            meData.roles = (meData.roles || []).map(normalizeRole);
-            userData = meData;
-          }
-          setUser(userData);
-          setRoles((userData.roles || []).map(normalizeRole));
+          // GET /api/auth/me/ returns user data + roles
+          const meData = await apiClient<User & { roles?: string[] }>('/auth/me/');
+          // Normalize roles to uppercase
+          const normalizedRoles = (meData.roles || []).map(normalizeRole);
+          setUser({ ...meData, roles: normalizedRoles });
+          setRoles(normalizedRoles);
         } catch (error) {
           clearTokens();
         }
@@ -55,19 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string) => {
     try {
-      let response: AuthResponse;
-
-      if (MOCK_MODE) {
-        console.log('[AUTH] Modo mock activo');
-        response = await MockAPI.login(username, password);
-      } else {
-        console.log('[AUTH] Conectando con API real');
-        response = await apiClient<AuthResponse>('/auth/login/', {
-          method: 'POST',
-          body: JSON.stringify({ username, password }),
-          skipAuth: true,
-        });
-      }
+      console.log('[AUTH] Conectando con API real');
+      const response = await apiClient<AuthResponse>('/auth/login/', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+        skipAuth: true,
+      });
 
       // Normalize roles to uppercase
       const normalizedRoles = (response.roles || []).map(normalizeRole);
@@ -89,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRoles([]);
   };
 
-  // Case-insensitive role check — both 'admin' and 'ADMIN' work
   const hasRole = (role: Role) => {
     return roles.map(r => r.toUpperCase()).includes(role.toUpperCase());
   };

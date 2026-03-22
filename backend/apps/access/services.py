@@ -213,10 +213,22 @@ class AccessService:
             from apps.devices.models import Device
             d_id = payload.device_id
             if not d_id:
+                # Fallback to the first found device if not provided (rare if coming from Pi)
                 dev_obj = Device.objects.first()
-                if not dev_obj:
-                    dev_obj, _ = Device.objects.get_or_create(name="Virtual Demo Device", defaults={"status": "ONLINE"})
-                d_id = dev_obj.id
+                if dev_obj:
+                    d_id = dev_obj.id
+                else:
+                    logger.warning("Access attempt without a registered device.")
+                    # Return without creating event if NO device exists at all
+                    return AccessValidationOutput(
+                        result=result,
+                        user_id=user.id if user else None,
+                        user_full_name=user.full_name if user else None,
+                        reason=reason,
+                        alert_flag=alert_flag,
+                        correlation_id=correlation_id,
+                        event_id=event_id
+                    )
 
             try:
                 event = AccessEvent.objects.create(

@@ -10,7 +10,7 @@ import { useDeviceStatus } from '@/hooks/use-device-status';
 type AuthStage = 'biometrico' | 'pin' | 'otp' | 'exito' | 'denegado';
 type BiometricStatus = 'scanning' | 'detected' | 'validating' | 'success' | 'fail' | 'not_detected';
 
-const AUDITORIA_AULA = 'A-101 — Laboratorio de Computación';
+const AUDITORIA_AULA = '-';
 const SOPORTE_TELEFONO = '+52 55 1234-5678';
 
 function BiometricoContent() {
@@ -212,13 +212,26 @@ function BiometricoContent() {
     }
   };
 
-  const handleOTPSubmit = () => {
+  const handleOTPSubmit = async () => {
     if (otpValue.length === 6) {
-      if (otpValue === '000000') {
-        setStage('exito');
-      } else {
-        toast({ title: '❌ Código OTP incorrecto', variant: 'destructive' });
-        setOtpValue('');
+      isValidatingRef.current = true;
+      try {
+        const res = await validateAccess.mutateAsync({
+          method: 'MANUAL', // We'll use MANUAL for OTP currently or add OTP method
+          data: otpValue,
+          aula_id: currentAulaId
+        });
+        
+        if (res.result === 'SUCCESS') {
+          setStage('exito');
+        } else {
+          toast({ title: '❌ Código OTP incorrecto', description: res.reason, variant: 'destructive' });
+          setOtpValue('');
+        }
+      } catch (err) {
+        toast({ title: 'Error', description: 'No se pudo validar el OTP', variant: 'destructive' });
+      } finally {
+        isValidatingRef.current = false;
       }
     }
   };
@@ -390,10 +403,18 @@ function BiometricoContent() {
                 </div>
               )}
             </div>
-            {/* Quick access to PIN for testing / manual bypass */}
-            <button onClick={() => setStage('pin')} className="text-xs text-white/50 hover:text-white underline">
-              Acceder con PIN
-            </button>
+            {/* Switch to PIN if not blocked or for manual bypass */}
+            {bioIntentos < 3 && (
+              <button 
+                onClick={() => {
+                  stopCamera();
+                  setStage('pin');
+                }} 
+                className="text-xs text-white/50 hover:text-white underline"
+              >
+                Acceder con PIN
+              </button>
+            )}
           </div>
         )}
 
@@ -435,9 +456,11 @@ function BiometricoContent() {
               ))}
             </div>
             
-            <button onClick={() => setStage('biometrico')} className="text-xs text-white/50 hover:text-white underline mt-2">
-              Volver a reconocimiento facial
-            </button>
+            {bioIntentos < 3 && (
+              <button onClick={() => setStage('biometrico')} className="text-xs text-white/50 hover:text-white underline mt-2">
+                Volver a reconocimiento facial
+              </button>
+            )}
           </div>
         )}
 
@@ -477,10 +500,16 @@ function BiometricoContent() {
             >
               Verificar OTP
             </button>
-            <p className="text-xs text-gray-500">(Demo: usa &quot;000000&quot;)</p>
-            <button onClick={() => setStage('biometrico')} className="text-xs text-white/50 hover:text-white underline">
-              Reiniciar terminal
-            </button>
+    
+            {/* Only allow restart if NOT fully blocked */}
+            {(bioIntentos < 3 || pinIntentos < 3) && (
+              <button 
+                onClick={handleReset} 
+                className="text-xs text-white/50 hover:text-white underline"
+              >
+                Reiniciar terminal
+              </button>
+            )}
           </div>
         )}
 
@@ -541,8 +570,7 @@ function BiometricoContent() {
           Contactar encargado
         </button>
         <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Shield className="h-3.5 w-3.5" />
-          <span>Sistema Biométrico v2.0 (AWS Rekognition)</span>
+          
         </div>
       </div>
 

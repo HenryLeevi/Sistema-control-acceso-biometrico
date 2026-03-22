@@ -2,7 +2,7 @@ import { AuthResponse } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
 const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
-  ? true
+  ? false
   : process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
 /** Ensures every path sent to Django has a trailing slash. */

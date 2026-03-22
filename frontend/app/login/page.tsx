@@ -69,7 +69,6 @@ export default function LoginPage() {
     }
   };
 
-  const isMockMode = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined' || process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
   return (
     <>
@@ -84,11 +83,6 @@ export default function LoginPage() {
           isShaking ? "opacity-100" : "opacity-0"
         )} />
 
-        {isMockMode && (
-          <div className="fixed top-0 left-0 right-0 bg-amber-500 text-white text-center py-2 text-sm font-medium z-50">
-            Modo Demostración Activo - Usando datos simulados (sin backend)
-          </div>
-        )}
         
         {/* The Door Container */}
         <div style={{ perspective: '1200px' }} className="z-10 w-full max-w-md">
