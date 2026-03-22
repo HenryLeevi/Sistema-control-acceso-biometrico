@@ -57,10 +57,10 @@ export default function DocenteDashboard() {
   const handleGenerarOTP = async () => {
     try {
       const res = await generarOTP.mutateAsync();
-      setOtpCodigo(res.codigo);
-      setOtpExpira(new Date(res.expira_en));
-      setTiempoRestante(300);
-      toast({ title: 'OTP generado', description: 'Válido por 5 minutos' });
+      setOtpCodigo(res.code);
+      setOtpExpira(new Date(res.expires_at));
+      setTiempoRestante(600); // 10 minutes (600 seconds)
+      toast({ title: 'OTP generado', description: 'Válido por 10 minutos' });
     } catch {
       toast({ title: 'Error al generar OTP', variant: 'destructive' });
     }
@@ -91,8 +91,8 @@ export default function DocenteDashboard() {
   const todayDia = new Date().getDay() === 0 ? 7 : new Date().getDay();
   const clasesHoy = clasesPorDia[todayDia] || [];
 
-  const progressPct = otpExpira ? (tiempoRestante / 300) * 100 : 0;
-  const progressColor = tiempoRestante > 180 ? 'bg-green-500' : tiempoRestante > 60 ? 'bg-amber-500' : 'bg-red-500';
+  const progressPct = otpExpira ? (tiempoRestante / 600) * 100 : 0;
+  const progressColor = tiempoRestante > 300 ? 'bg-green-500' : tiempoRestante > 60 ? 'bg-amber-500' : 'bg-red-500';
 
   return (
     <RoleGuard allowedRoles={['DOCENTE']}>
@@ -297,7 +297,7 @@ export default function DocenteDashboard() {
                       <li>Cuando no recuerdas tu PIN</li>
                       <li>En situaciones de emergencia</li>
                     </ul>
-                    <p className="text-[10px] text-amber-600 pt-1">El código es válido por 5 minutos y de un solo uso.</p>
+                    <p className="text-[10px] text-amber-600 pt-1">El código es válido por 10 minutos y de un solo uso.</p>
                   </div>
                 </CardContent>
               </Card>

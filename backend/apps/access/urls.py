@@ -10,6 +10,7 @@ from .views import (
     AccessValidateView,
     KPIView,
     ReporteView,
+    TeacherOTPViewSet,
 )
 
 router = DefaultRouter()
@@ -17,6 +18,7 @@ router.register(r"aulas", AulaViewSet, basename="aula")
 router.register(r"schedules", ScheduleViewSet, basename="schedule")
 router.register(r"permissions", AccessPermissionViewSet, basename="access-permission")
 router.register(r"events", AccessEventViewSet, basename="access-event")
+router.register(r"otps", TeacherOTPViewSet, basename="teacher-otp")
 
 urlpatterns = [
     path("", include(router.urls)),

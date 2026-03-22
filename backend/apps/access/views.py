@@ -20,15 +20,18 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
 from drf_spectacular.types import OpenApiTypes
 
-from .models import Aula, Schedule, AccessPermission, AccessEvent
+from .models import Aula, Schedule, AccessPermission, AccessEvent, TeacherOTP
 from .serializers import (
     AulaSerializer,
     ScheduleSerializer,
     AccessPermissionSerializer,
     AccessEventSerializer,
     AccessValidateSerializer,
+    TeacherOTPSerializer,
 )
 from .services import AccessService, AccessValidationInput, AccessMethod
+from django.utils import timezone
+from apps.users.models import User as LocalUser
 
 
 # ─────────────────────────────────────────
@@ -402,3 +405,60 @@ class ReporteView(APIView):
             "heatmap": [],
             "usuarios_mas_activos": [],
         })
+
+
+from rest_framework.decorators import action
+import random
+import string
+from datetime import timedelta
+
+class TeacherOTPViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
+    """
+    ViewSet for managing Teacher OTPs.
+    Teachers can generate their own codes here.
+    """
+    queryset = TeacherOTP.objects.all()
+    serializer_class = TeacherOTPSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Users (Teachers) can only see their own OTPs
+        # Map auth.User to LocalUser via email
+        auth_user = self.request.user
+        local_user = LocalUser.objects.filter(email=auth_user.email).first()
+        if not local_user:
+            return self.queryset.none()
+        return self.queryset.filter(user=local_user)
+
+    @action(detail=False, methods=["post"])
+    def generate(self, request):
+        auth_user = request.user
+        # Find the local user profile linked by email
+        local_user = LocalUser.objects.filter(email=auth_user.email).first()
+        
+        if not local_user:
+            return Response(
+                {"error": "Su cuenta no tiene un perfil de docente vinculado (email no encontrado)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Invalidate existing unused OTPs for this user to keep it clean
+        TeacherOTP.objects.filter(user=local_user, is_used=False).update(is_used=True)
+        
+        # Generate random 6-digit code
+        code = "".join(random.choices(string.digits, k=6))
+        expires_at = timezone.now() + timedelta(minutes=10)
+        
+        otp = TeacherOTP.objects.create(
+            user=local_user,
+            code=code,
+            expires_at=expires_at
+        )
+        
+        data = TeacherOTPSerializer(otp).data
+        data["message"] = "Código OTP generado exitosamente. Válido por 10 minutos."
+        return Response(data, status=status.HTTP_201_CREATED)
