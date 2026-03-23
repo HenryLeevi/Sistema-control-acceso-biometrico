@@ -232,32 +232,36 @@ export const usePermisos = (usuarioId?: string) => {
 export const useCreatePermiso = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: Partial<AccessPermission>) => {
-      return apiClient<AccessPermission>('/access/permissions/', { method: 'POST', body: JSON.stringify(data) });
+    mutationFn: (data: Partial<AccessPermission>) => apiClient<AccessPermission>('/access/permissions/', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permisos'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permisos'] }),
   });
 };
 
 export const useUpdatePermiso = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<AccessPermission> }) => {
-      return apiClient<AccessPermission>(`/access/permissions/${id}/`, { method: 'PATCH', body: JSON.stringify(data) });
+    mutationFn: ({ id, data }: { id: string; data: Partial<AccessPermission> }) => apiClient<AccessPermission>(`/access/permissions/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permisos'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permisos'] }),
   });
 };
 
 export const useDeletePermiso = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      return apiClient<void>(`/access/permissions/${id}/`, { method: 'DELETE' });
+    mutationFn: (id: string) => apiClient<void>(`/access/permissions/${id}/`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permisos'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permisos'] }),
   });
 };
+
 
 // ── Validation (/api/access/validate/) ───────────────
 
@@ -284,20 +288,21 @@ export const useAlertas = () => {
   return useQuery({
     queryKey: ['alertas'],
     queryFn: async () => {
-      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/');
+      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/?alert_flag=true');
     },
   });
 };
 
 // ── KPI (/api/access/kpi/) ──────────────────────────
 
-export const useKPIData = () => {
+export const useKPIData = (filters?: Record<string, string>) => {
   return useQuery({
-    queryKey: ['kpi'],
+    queryKey: ['kpi', filters],
     queryFn: async () => {
-      return apiClient<KPIData>('/access/kpi/');
+      const params = filters ? '?' + new URLSearchParams(filters).toString() : '';
+      return apiClient<KPIData>(`/access/kpi/${params}`);
     },
-    refetchInterval: 30000,
+    refetchInterval: (filters?.start_date && filters?.end_date) ? undefined : 30000,
   });
 };
 
@@ -326,13 +331,47 @@ export const useExportarEventos = () => {
         }
       });
       
-      if (!response.ok) throw new Error('Error al exportar reporte');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.error || 'Error al exportar reporte CSV');
+      }
       
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `reporte_accesos_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    }
+  });
+};
+
+export const useExportarExcel = () => {
+  return useMutation({
+    mutationFn: async (filters?: Record<string, string>) => {
+      const params = filters ? '?' + new URLSearchParams(filters).toString() : '';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      
+      const response = await fetch(`${baseUrl}/access/events/export_excel/${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.error || 'Error al exportar reporte Excel');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte_accesos_${new Date().toISOString().split('T')[0]}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -359,4 +398,16 @@ export const useGenerarOTP = () => {
   });
 };
 
+export const usePermissions = usePermisos;
+export const useDeletePermission = useDeletePermiso;
 
+export const useUpsertCalendarEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => apiClient('/access/permissions/upsert_calendar_event/', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permisos'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
+    },
+  });
+};

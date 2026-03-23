@@ -18,7 +18,8 @@ import {
 import { WebcamCapture } from '@/components/webcam-capture';
 import { User, AppRole, UserRole } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Upload, Shield, X, Eye, EyeOff, Copy, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Shield, X, Eye, EyeOff, Copy, RefreshCw, Fingerprint, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
@@ -332,13 +333,27 @@ export default function UsuariosPage() {
     {
       header: 'Usuario',
       accessor: (row: User) => (
-        <div>
-          <p className="font-medium">{row.nombre} {row.apellido}</p>
-          <p className="text-xs text-slate-500">{row.email}</p>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-100 shadow-sm shrink-0">
+            {`${row.nombre[0] || ''}${row.apellido[0] || ''}`.toUpperCase() || <Users className="h-4 w-4" />}
+          </div>
+          <div className="overflow-hidden text-left">
+            <p className="font-bold text-slate-900 truncate">{row.nombre} {row.apellido}</p>
+            <p className="text-[10px] text-slate-500 truncate">{row.email}</p>
+          </div>
         </div>
       ),
     },
-    { header: 'DUI', accessor: (row: User) => row.dui || '—' },
+    { header: 'DUI', accessor: (row: User) => (<span className="font-mono font-medium">{row.dui || '—'}</span>) },
+    {
+      header: 'Enrolado',
+      accessor: (row: User) => (
+        <Badge variant="outline" className={cn("font-bold gap-1.5 shadow-none", row.is_enrolled ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-red-50 text-red-700 border-red-200")}>
+          <div className={cn("h-2 w-2 rounded-full", row.is_enrolled ? 'bg-emerald-500' : 'bg-red-500')} />
+          {row.is_enrolled ? 'SÍ' : 'NO'}
+        </Badge>
+      ),
+    },
     {
       header: 'Estado',
       accessor: (row: User) => (
@@ -350,15 +365,15 @@ export default function UsuariosPage() {
     {
       header: 'Acciones',
       accessor: (row: User) => (
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" onClick={() => openEdit(row)}>
-            <Pencil className="h-3.5 w-3.5" />
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 transition-colors" onClick={() => openEdit(row)}>
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="outline" onClick={() => { setSelectedForBio(row); setIsBioDialogOpen(true); }}>
-            <Upload className="h-3.5 w-3.5" />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-emerald-600 transition-colors" onClick={() => { setSelectedForBio(row); setIsBioDialogOpen(true); }}>
+            <Fingerprint className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => setUserToDelete(row)}>
-            <Trash2 className="h-3.5 w-3.5" />
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 transition-colors" onClick={() => setUserToDelete(row)}>
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -369,12 +384,12 @@ export default function UsuariosPage() {
     <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN']}>
       <AdminLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Usuarios</h1>
               <p className="text-slate-600 mt-1">Gestión de usuarios del sistema</p>
             </div>
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" /> Nuevo Usuario
             </Button>
           </div>

@@ -79,15 +79,17 @@ def search_face_by_image(image_bytes):
         
         if response['FaceMatches']:
             match = response['FaceMatches'][0]
-            print(f"DEBUG REKOGNITION: Match found! ID={match['Face']['ExternalImageId']}, Confidence={match['Similarity']}%")
-            return match['Face']['ExternalImageId']
+            confidence = match['Similarity']
+            user_id = match['Face']['ExternalImageId']
+            print(f"DEBUG REKOGNITION: Match found! ID={user_id}, Confidence={confidence}%")
+            return user_id, confidence
         else:
             print("DEBUG REKOGNITION: No face matches found in collection.")
             
     except ClientError as e:
         print(f"Rekognition Search Error: {e}")
         
-    return None
+    return None, 0
 
 def delete_face_from_collection(face_id):
     """

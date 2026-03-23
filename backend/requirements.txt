@@ -28,3 +28,7 @@ django-filter==23.5
 
 # API Documentation (Swagger / OpenAPI)
 drf-spectacular==0.29.0
+
+# Production Servers
+gunicorn==21.2.0
+uvicorn[standard]==0.29.0

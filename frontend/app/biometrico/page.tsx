@@ -11,7 +11,7 @@ type AuthStage = 'biometrico' | 'pin' | 'otp' | 'exito' | 'denegado';
 type BiometricStatus = 'scanning' | 'detected' | 'validating' | 'success' | 'fail' | 'not_detected';
 
 const AUDITORIA_AULA = '-';
-const SOPORTE_TELEFONO = '+503 71112300';
+const SOPORTE_TELEFONO = '+503 7111-2300';
 
 function BiometricoContent() {
   const { toast } = useToast();

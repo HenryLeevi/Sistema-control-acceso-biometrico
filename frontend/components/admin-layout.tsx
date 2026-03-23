@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -45,8 +45,7 @@ const allNavItems: NavItem[] = [
 export function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, roles } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout, roles, sidebarOpen, setSidebarOpen } = useAuth();
 
   // Case-insensitive comparison — roles from backend are uppercase, nav items now uppercase too
   const navItems = allNavItems.filter(item =>
@@ -76,7 +75,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-50">
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-200 ease-in-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-all duration-200 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -89,7 +88,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-slate-400 hover:text-white"
+            className="text-slate-400 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -132,12 +131,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-6">
+      <div className={cn("transition-all duration-200 max-w-full overflow-x-hidden", sidebarOpen ? "lg:pl-64" : "pl-0")}>
+        <header className="sticky top-0 z-30 bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 lg:px-6 max-w-full">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-slate-600 hover:text-slate-900"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-slate-600 hover:text-slate-900"
             >
               <Menu className="h-6 w-6" />
             </button>

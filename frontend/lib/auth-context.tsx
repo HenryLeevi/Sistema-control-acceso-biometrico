@@ -12,6 +12,8 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<{ roles: Role[] }>;
   logout: () => void;
   hasRole: (role: Role) => boolean;
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +22,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    // Initial responsive check
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -85,6 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         hasRole,
+        sidebarOpen,
+        setSidebarOpen,
       }}
     >
       {children}
