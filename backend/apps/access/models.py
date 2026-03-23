@@ -69,8 +69,13 @@ class Schedule(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     day_of_week = models.IntegerField(choices=DAY_CHOICES, null=True, blank=True)
+    date = models.DateField(null=True, blank=True, help_text="Fecha específica para horarios no recurrentes.")
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
+    is_recurring = models.BooleanField(
+        default=True,
+        help_text="Si es True, se repite todas las semanas según el día. Si es False, solo aplica en la fecha específica."
+    )
     is_anytime = models.BooleanField(
         default=False, 
         help_text="Si está marcado, permite el acceso en cualquier momento (ignora día y hora)."
@@ -84,7 +89,11 @@ class Schedule(models.Model):
     def __str__(self):
         if self.is_anytime:
             return "Acceso Total"
-        return f"{self.get_day_of_week_display()} {self.start_time}–{self.end_time}"
+        
+        time_part = f"{self.start_time}–{self.end_time}"
+        if self.is_recurring:
+            return f"{self.get_day_of_week_display()} (Recurrente) {time_part}"
+        return f"{self.date} (Único) {time_part}"
 
 
 class AccessPermission(models.Model):

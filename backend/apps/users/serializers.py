@@ -31,6 +31,10 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=128, required=False, write_only=True,
         help_text="Password for login."
     )
+    roles = serializers.SerializerMethodField()
+
+    def get_roles(self, obj):
+        return [ur.role.name for ur in obj.user_roles.all()]
 
     class Meta:
         model = User
@@ -44,11 +48,12 @@ class UserSerializer(serializers.ModelSerializer):
             "residencia",
             "is_active",
             "created_at",
+            "roles",
             # write-only auth fields
             "username",
             "password",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "roles"]
         extra_kwargs = {
             "dui": {"required": False, "allow_blank": True},
             "fecha_nacimiento": {"required": False, "allow_null": True},

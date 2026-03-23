@@ -24,7 +24,8 @@ const AULA_COLORS = [
   { bg: 'bg-cyan-50', border: 'border-l-cyan-500', badge: 'bg-cyan-100 text-cyan-800', dot: 'bg-cyan-500' },
 ];
 
-function horaToMin(h: string) {
+function horaToMin(h: string | null) {
+  if (!h) return 0;
   const [hr, mn] = h.split(':').map(Number);
   return hr * 60 + mn;
 }
@@ -89,7 +90,7 @@ export default function DocenteDashboard() {
   });
 
   const todayDia = new Date().getDay() === 0 ? 7 : new Date().getDay();
-  const clasesHoy = clasesPorDia[todayDia] || [];
+  const clasesHoy = [...(clasesPorDia[todayDia] || []), ...clases.filter(c => c.horario.is_anytime)];
 
   const progressPct = otpExpira ? (tiempoRestante / 600) * 100 : 0;
   const progressColor = tiempoRestante > 300 ? 'bg-green-500' : tiempoRestante > 60 ? 'bg-amber-500' : 'bg-red-500';
@@ -144,13 +145,19 @@ export default function DocenteDashboard() {
                     <div className="space-y-3">
                       {[...clasesHoy].sort((a, b) => horaToMin(a.horario.start_time) - horaToMin(b.horario.start_time)).map((c, i) => (
                         <div key={i} className={`flex items-center gap-4 p-4 rounded-xl border-l-4 ${c.color.bg} ${c.color.border} border border-l-4`}>
-                          <div className="text-center min-w-[56px]">
-                            <p className="text-xs font-mono font-bold text-slate-700">{c.horario.start_time}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">{c.horario.end_time}</p>
+                          <div className="text-center min-w-[64px]">
+                            {c.horario.is_anytime ? (
+                              <p className="text-[10px] font-bold text-slate-900 uppercase leading-none">Acceso<br/>Total</p>
+                            ) : (
+                              <>
+                                <p className="text-xs font-mono font-bold text-slate-700">{(c.horario.start_time || '').slice(0, 5)}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">{(c.horario.end_time || '').slice(0, 5)}</p>
+                              </>
+                            )}
                           </div>
                           <div className="h-10 w-px bg-slate-200 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-900">
+                            <p className="font-semibold text-slate-900 truncate">
                               {c.aula?.description || `Aula ${c.aula?.code}`}
                             </p>
                             <div className="flex items-center gap-1.5 mt-0.5">
@@ -159,7 +166,7 @@ export default function DocenteDashboard() {
                             </div>
                           </div>
                           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${c.color.badge}`}>
-                            {c.horario.day_label || c.horario.start_time}
+                            {c.horario.is_anytime ? 'Permanente' : (DIAS_CORTO[c.horario.day_of_week] || '')}
                           </span>
                         </div>
                       ))}
@@ -199,7 +206,7 @@ export default function DocenteDashboard() {
                               clasesDelDia.map((c, i) => (
                                 <div key={i} className={`rounded-lg p-1.5 border ${c.color.bg} ${c.color.border.replace('border-l-', 'border-')}`}>
                                   <p className="text-[10px] font-bold text-slate-700 leading-tight">{c.aula?.code}</p>
-                                  <p className="text-[9px] text-slate-500 font-mono leading-tight">{c.horario.start_time}</p>
+                                  <p className="text-[9px] text-slate-500 font-mono leading-tight">{(c.horario.start_time || '').slice(0, 5)}</p>
                                 </div>
                               ))
                             )}

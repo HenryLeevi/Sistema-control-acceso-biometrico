@@ -53,8 +53,10 @@ export interface Aula {
 export interface Schedule {
   id: string;
   day_of_week: number | null;  // 0=Mon … 6=Sun
+  date: string | null;         // "YYYY-MM-DD"
   start_time: string | null;   // "HH:MM:SS"
   end_time: string | null;
+  is_recurring: boolean;
   is_anytime: boolean;
 }
 
@@ -70,6 +72,10 @@ export interface AccessPermission {
   schedule_display?: string;
   schedule_day?: number;
   schedule_start?: string;
+  schedule_end?: string;
+  schedule_is_anytime?: boolean;
+  schedule_date?: string | null;
+  schedule_is_recurring?: boolean;
   user_email?: string;
   user_nombre?: string;
 }

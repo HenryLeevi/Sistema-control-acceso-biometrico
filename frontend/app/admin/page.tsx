@@ -4,7 +4,7 @@ import { AdminLayout } from '@/components/admin-layout';
 import { RoleGuard } from '@/components/role-guard';
 import { KPICard } from '@/components/kpi-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useKPIData, useAlertas, useEventos, useUsuarios } from '@/lib/api-hooks';
+import { useKPIData, useAlertas, useEventos, useUsuarios, usePermissions } from '@/lib/api-hooks';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CheckCircle, XCircle, Activity, AlertTriangle, Users, ShieldAlert, UserX, Clock, LayoutDashboard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { AccessEvent } from '@/lib/types';
+import { AccessEvent, AccessPermission } from '@/lib/types';
 import { DynamicChart } from '@/components/dynamic-chart';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -61,6 +61,8 @@ function AdminDashboard() {
   // KPI Data hook with filters
   const kpiFilters = dateRange ? { start_date: dateRange.start, end_date: dateRange.end } : undefined;
   const { data: kpiData, isLoading: kpiLoading } = useKPIData(kpiFilters);
+  const { data: permissionsData } = usePermissions();
+  const permissions = permissionsData?.results || [];
 
   const [isLoaded, setIsLoaded] = useState(false);
 

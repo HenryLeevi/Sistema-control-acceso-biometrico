@@ -41,7 +41,8 @@ import {
 } from 'recharts';
 import { 
   Activity, CheckCircle, XCircle, AlertTriangle, Users, ShieldAlert, UserX, Clock, LayoutDashboard, 
-  FileText, Calendar, Search, Filter, Download, Plus, Trash2, Edit, ChevronRight, Phone
+  FileText, Calendar as CalendarIcon, Search, Filter, Download, Plus, Trash2, Edit, ChevronRight, Phone,
+  Shield, Upload, RefreshCw, X, DoorOpen
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfWeek, addDays, startOfDay, parseISO, isSameDay } from 'date-fns';

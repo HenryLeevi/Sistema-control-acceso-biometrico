@@ -360,4 +360,33 @@ export const useGenerarOTP = () => {
   });
 };
 
+export const usePermissions = () => {
+  return useQuery({
+    queryKey: ['permissions'],
+    queryFn: async () => {
+      return apiClient<PaginatedResponse<AccessPermission>>('/access/permissions/');
+    },
+  });
+};
 
+export const useDeletePermission = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient(`/access/permissions/${id}/`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
+    },
+  });
+};
+
+export const useUpsertCalendarEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => apiClient('/access/permissions/upsert_calendar_event/', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['kpi'] });
+    },
+  });
+};

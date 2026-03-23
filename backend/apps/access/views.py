@@ -167,6 +167,59 @@ class AccessPermissionViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["user", "aula", "is_active"]
 
+    @extend_schema(
+        summary="Upsert de permiso desde el calendario",
+        description="Busca/crea un horario (Schedule) y vincula un permiso de acceso en una sola operación.",
+        request=OpenApiTypes.OBJECT, # Simplificado para el ejemplo
+        responses={200: AccessPermissionSerializer, 201: AccessPermissionSerializer}
+    )
+    @action(detail=False, methods=["post"])
+    def upsert_calendar_event(self, request):
+        user_id = request.data.get("user")
+        aula_id = request.data.get("aula")
+        day_of_week = request.data.get("day_of_week")
+        start_time = request.data.get("start_time")
+        end_time = request.data.get("end_time")
+        is_anytime = request.data.get("is_anytime", False)
+        is_recurring = request.data.get("is_recurring", True)
+        date = request.data.get("date")
+        permission_id = request.data.get("id")
+
+        if not user_id or not aula_id:
+            return Response({"error": "user y aula son requeridos"}, status=400)
+
+        # 1. Buscar o Crear el Schedule
+        schedule, _ = Schedule.objects.get_or_create(
+            day_of_week=day_of_week if is_recurring else None,
+            date=date if not is_recurring else None,
+            start_time=start_time,
+            end_time=end_time,
+            is_recurring=is_recurring,
+            is_anytime=is_anytime
+        )
+
+        # 2. Upsert Permission
+        if permission_id:
+            try:
+                permission = AccessPermission.objects.get(id=permission_id)
+                permission.user_id = user_id
+                permission.aula_id = aula_id
+                permission.schedule = schedule
+                permission.is_active = True
+                permission.save()
+            except AccessPermission.DoesNotExist:
+                return Response({"error": "Permiso no encontrado"}, status=404)
+        else:
+            permission = AccessPermission.objects.create(
+                user_id=user_id,
+                aula_id=aula_id,
+                schedule=schedule,
+                is_active=True
+            )
+
+        serializer = self.get_serializer(permission)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if not permission_id else status.HTTP_200_OK)
+
 
 # ─────────────────────────────────────────
 # Eventos de acceso (read-only audit log)

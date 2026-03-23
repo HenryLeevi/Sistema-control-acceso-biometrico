@@ -184,14 +184,26 @@ class AccessService:
                 valid_access = False
                 for perm in permissions:
                     sched = perm.schedule
-                    # Check if it's an "Anytime" schedule or if it matches the current time/day
+                    
+                    # 1. Check "Anytime"
                     if sched.is_anytime:
                         valid_access = True
                         break
-                    if sched.day_of_week == current_day and \
-                       sched.start_time <= current_time <= sched.end_time:
-                        valid_access = True
-                        break
+                    
+                    # 2. Check Time Range (Always required)
+                    if not (sched.start_time <= current_time <= sched.end_time):
+                        continue
+                        
+                    # 3. Check Date/Day based on recurrence
+                    if sched.is_recurring:
+                        if sched.day_of_week == current_day:
+                            valid_access = True
+                            break
+                    else:
+                        # Non-recurring: must match the exact date
+                        if sched.date == now_time.date():
+                            valid_access = True
+                            break
                 
                 if valid_access:
                     result = AccessResult.SUCCESS
