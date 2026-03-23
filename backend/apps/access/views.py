@@ -307,7 +307,7 @@ class KPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        today = timezone.now().date()
+        today = timezone.localdate()
         events_today = AccessEvent.objects.filter(timestamp__date=today)
 
         total = events_today.count()
