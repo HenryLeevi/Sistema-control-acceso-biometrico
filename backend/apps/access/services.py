@@ -82,11 +82,14 @@ class AccessService:
         from apps.biometric.models import Biometric
         from apps.access.models import Aula, AccessPermission, AccessEvent, Schedule
         from apps.biometric.services.aws_rekognition import search_face_by_image
+        import time
+        start_time = time.time()
         
         user = None
         reason = None
         alert_flag = False
         result = AccessResult.DENIED
+        score = None
         
         correlation_id = uuid.uuid4()
         
@@ -97,7 +100,9 @@ class AccessService:
                     # Decode base64 image from device
                     image_data = base64.b64decode(payload.data)
                     
-                    found_user_id = search_face_by_image(image_data)
+                    found_user_id, sim_score = search_face_by_image(image_data)
+                    score = sim_score
+                    
                     if found_user_id:
                         # Double check: confirm user exists AND has an active biometric enrollment
                         from apps.biometric.models import Biometric
@@ -183,14 +188,26 @@ class AccessService:
                 valid_access = False
                 for perm in permissions:
                     sched = perm.schedule
-                    # Check if it's an "Anytime" schedule or if it matches the current time/day
+                    
+                    # 1. Check "Anytime"
                     if sched.is_anytime:
                         valid_access = True
                         break
-                    if sched.day_of_week == current_day and \
-                       sched.start_time <= current_time <= sched.end_time:
-                        valid_access = True
-                        break
+                    
+                    # 2. Check Time Range (Always required)
+                    if not (sched.start_time <= current_time <= sched.end_time):
+                        continue
+                        
+                    # 3. Check Date/Day based on recurrence
+                    if sched.is_recurring:
+                        if sched.day_of_week == current_day:
+                            valid_access = True
+                            break
+                    else:
+                        # Non-recurring: must match the exact date
+                        if sched.date == now_time.date():
+                            valid_access = True
+                            break
                 
                 if valid_access:
                     result = AccessResult.SUCCESS
@@ -232,10 +249,9 @@ class AccessService:
 
         # 3. Log Audit Event
         event_id = uuid.uuid4()
+        duration = time.time() - start_time
         
-        # Fallback for device if not provided (rare if coming from Pi)
-        d_id = payload.device_id
-        if not d_id:
+        if aula:
             from apps.devices.models import Device
             dev_obj = Device.objects.first()
             if dev_obj:
@@ -253,7 +269,9 @@ class AccessService:
                     result=result.value,
                     reason=reason,
                     alert_flag=alert_flag,
-                    correlation_id=correlation_id
+                    correlation_id=correlation_id,
+                    score=score,
+                    response_time=duration
                 )
                 event_id = event.id
             except Exception as e:

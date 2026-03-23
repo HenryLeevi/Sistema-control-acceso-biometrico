@@ -45,7 +45,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Schedule
-        fields = ["id", "day_of_week", "day_label", "start_time", "end_time", "is_anytime"]
+        fields = ["id", "day_of_week", "day_label", "date", "start_time", "end_time", "is_recurring", "is_anytime"]
         read_only_fields = ["id", "day_label"]
 
     def validate(self, data):
@@ -64,6 +64,10 @@ class AccessPermissionSerializer(serializers.ModelSerializer):
     schedule_display = serializers.CharField(source="schedule.__str__", read_only=True)
     schedule_day = serializers.IntegerField(source="schedule.day_of_week", read_only=True)
     schedule_start = serializers.TimeField(source="schedule.start_time", read_only=True)
+    schedule_end = serializers.TimeField(source="schedule.end_time", read_only=True)
+    schedule_is_anytime = serializers.BooleanField(source="schedule.is_anytime", read_only=True)
+    schedule_date = serializers.DateField(source="schedule.date", read_only=True)
+    schedule_is_recurring = serializers.BooleanField(source="schedule.is_recurring", read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
     user_nombre = serializers.SerializerMethodField(read_only=True)
 
@@ -73,12 +77,15 @@ class AccessPermissionSerializer(serializers.ModelSerializer):
             "id", "user", "aula", "schedule", "is_active",
             # read-only display extras
             "aula_code", "aula_description", "schedule_display",
-            "schedule_day", "schedule_start",
+            "schedule_day", "schedule_start", "schedule_end", "schedule_is_anytime",
+            "schedule_date", "schedule_is_recurring",
             "user_email", "user_nombre",
         ]
         read_only_fields = [
             "id", "aula_code", "aula_description", "schedule_display", 
-            "schedule_day", "schedule_start", "user_email", "user_nombre"
+            "schedule_day", "schedule_start", "schedule_end", "schedule_is_anytime",
+            "schedule_date", "schedule_is_recurring",
+            "user_email", "user_nombre"
         ]
 
     def get_user_nombre(self, obj):

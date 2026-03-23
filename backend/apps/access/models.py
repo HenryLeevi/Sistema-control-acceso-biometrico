@@ -10,6 +10,7 @@ Models:
 
 import uuid
 from django.db import models
+from django.utils import timezone
 from apps.users.models import User
 from apps.devices.models import Device
 
@@ -68,8 +69,13 @@ class Schedule(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     day_of_week = models.IntegerField(choices=DAY_CHOICES, null=True, blank=True)
+    date = models.DateField(null=True, blank=True, help_text="Fecha específica para horarios no recurrentes.")
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
+    is_recurring = models.BooleanField(
+        default=True,
+        help_text="Si es True, se repite todas las semanas según el día. Si es False, solo aplica en la fecha específica."
+    )
     is_anytime = models.BooleanField(
         default=False, 
         help_text="Si está marcado, permite el acceso en cualquier momento (ignora día y hora)."
@@ -83,7 +89,11 @@ class Schedule(models.Model):
     def __str__(self):
         if self.is_anytime:
             return "Acceso Total"
-        return f"{self.get_day_of_week_display()} {self.start_time}–{self.end_time}"
+        
+        time_part = f"{self.start_time}–{self.end_time}"
+        if self.is_recurring:
+            return f"{self.get_day_of_week_display()} (Recurrente) {time_part}"
+        return f"{self.date} (Único) {time_part}"
 
 
 class AccessPermission(models.Model):
@@ -166,7 +176,7 @@ class AccessEvent(models.Model):
         blank=True,
         related_name="access_events",
     )
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
     method = models.CharField(max_length=10, choices=Method.choices)
     result = models.CharField(max_length=10, choices=Result.choices)
     reason = models.TextField(blank=True, null=True, help_text="Denial reason or additional context.")
@@ -179,11 +189,19 @@ class AccessEvent(models.Model):
         help_text="Correlates events across device and backend for distributed tracing.",
         db_index=True,
     )
+    score = models.FloatField(
+        null=True, 
+        blank=True, 
+        help_text="Biometric similarity score (if applicable)."
+    )
+    response_time = models.FloatField(
+        null=True, 
+        blank=True, 
+        help_text="Time taken to process the request in seconds."
+    )
     alert_reviewed = models.BooleanField(default=False)
     is_false_negative = models.BooleanField(default=False)
-    score = models.FloatField(null=True, blank=True)
     validation_time = models.FloatField(null=True, blank=True)
-    response_time = models.FloatField(null=True, blank=True)
 
     class Meta:
         db_table = "access_events"

@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Skeleton } from './ui/skeleton';
+import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
 
 interface Column<T> {
@@ -21,6 +22,7 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   emptyMessage?: string;
   onRowClick?: (row: T) => void;
+  hideHeader?: boolean;
 }
 
 export function DataTable<T extends { id: string }>({
@@ -31,6 +33,7 @@ export function DataTable<T extends { id: string }>({
   searchPlaceholder = 'Buscar...',
   emptyMessage = 'No hay datos disponibles',
   onRowClick,
+  hideHeader = false,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -71,15 +74,17 @@ export function DataTable<T extends { id: string }>({
 
       <div className="border rounded-lg overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50">
-              {columns.map((column, index) => (
-                <TableHead key={index} className={column.className}>
-                  {column.header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+          {!hideHeader && (
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                {columns.map((column, index) => (
+                  <TableHead key={index} className={column.className}>
+                    {column.header}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+          )}
           <TableBody>
             {filteredData.length === 0 ? (
               <TableRow>
@@ -92,7 +97,10 @@ export function DataTable<T extends { id: string }>({
                 <TableRow
                   key={row.id}
                   onClick={() => onRowClick?.(row)}
-                  className={onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''}
+                  className={cn(
+                    "transition-all duration-200",
+                    onRowClick ? "cursor-pointer hover:bg-indigo-50/50 hover:scale-[1.005] hover:shadow-sm active:scale-[0.995]" : ""
+                  )}
                 >
                   {columns.map((column, colIndex) => (
                     <TableCell key={colIndex} className={column.className}>

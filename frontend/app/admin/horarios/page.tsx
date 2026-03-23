@@ -3,238 +3,161 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin-layout';
 import { RoleGuard } from '@/components/role-guard';
-import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useHorarios, useCreateHorario, useUpdateHorario, useDeleteHorario } from '@/lib/api-hooks';
-import { Schedule } from '@/lib/types';
+import { useHorarios, usePermissions, useDeletePermission, useUpsertCalendarEvent } from '@/lib/api-hooks';
+import { Schedule, AccessPermission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { formatTimeAMPM } from '@/lib/utils';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { WeeklyCalendar } from '@/components/weekly-calendar';
+import { CalendarEventModal } from '@/components/calendar-event-modal';
 
-const DIAS = [
-  { value: '0', label: 'Lunes' },
-  { value: '1', label: 'Martes' },
-  { value: '2', label: 'Miércoles' },
-  { value: '3', label: 'Jueves' },
-  { value: '4', label: 'Viernes' },
-  { value: '5', label: 'Sábado' },
-  { value: '6', label: 'Domingo' },
-];
-
-const getDiaLabel = (num: number | null | undefined) => {
-  if (num === null || num === undefined) return 'N/A';
-  return DIAS[num]?.label ?? `Día ${num}`;
-};
-
-const emptyForm = { day_of_week: '1', start_time: '07:00', end_time: '08:00', is_anytime: false };
+// Remove local DIAS and emptyForm constants as they are now handled by the unified modal
 
 export default function HorariosPage() {
-  const { data, isLoading } = useHorarios();
-  const createHorario = useCreateHorario();
-  const updateHorario = useUpdateHorario();
-  const deleteHorario = useDeleteHorario();
+  const { data: permissionsData } = usePermissions();
+  const upsertEvent = useUpsertCalendarEvent();
+  const deletePermission = useDeletePermission();
   const { toast } = useToast();
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Schedule | null>(null);
-  const [formData, setFormData] = useState(emptyForm);
-  const [itemToDelete, setItemToDelete] = useState<Schedule | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPermission, setSelectedPermission] = useState<any>(null);
+  const [showPermanent, setShowPermanent] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const horarios = data?.results || [];
-  const isPending = createHorario.isPending || updateHorario.isPending;
-
-  const openCreate = () => { setEditing(null); setFormData(emptyForm); setIsDialogOpen(true); };
-  const openEdit = (h: Schedule) => {
-    setEditing(h);
-    setFormData({
-      day_of_week: h.day_of_week !== null ? String(h.day_of_week) : '1',
-      start_time: h.start_time ? h.start_time.slice(0, 5) : '07:00',
-      end_time: h.end_time ? h.end_time.slice(0, 5) : '08:00',
-      is_anytime: h.is_anytime,
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = {
-      day_of_week: formData.is_anytime ? null : parseInt(formData.day_of_week),
-      start_time: formData.is_anytime ? null : formData.start_time,
-      end_time: formData.is_anytime ? null : formData.end_time,
-      is_anytime: formData.is_anytime,
-    };
+  const openCreate = () => { setSelectedPermission(null); setIsModalOpen(true); };
+  
+  const handleSave = async (data: any) => {
     try {
-      if (editing) {
-        await updateHorario.mutateAsync({ id: editing.id, data: payload });
-        toast({ title: 'Horario actualizado' });
-      } else {
-        await createHorario.mutateAsync(payload);
-        toast({ title: 'Horario creado' });
-      }
-      setIsDialogOpen(false);
+      await upsertEvent.mutateAsync(data);
+      toast({ title: 'Éxito', description: 'El horario ha sido guardado correctamente.' });
+      setIsModalOpen(false);
     } catch {
-      toast({ title: 'Error', description: 'No se pudo guardar el horario', variant: 'destructive' });
+      toast({ title: 'Error', description: 'No se pudo guardar el horario.', variant: 'destructive' });
     }
   };
 
-  const confirmDelete = async () => {
-    if (!itemToDelete) return;
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este horario?')) return;
     try {
-      await deleteHorario.mutateAsync(itemToDelete.id);
-      toast({ title: 'Horario eliminado' });
-      setItemToDelete(null);
+      await deletePermission.mutateAsync(id);
+      toast({ title: 'Eliminado', description: 'El horario ha sido eliminado.' });
+      setIsModalOpen(false);
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo eliminar el horario.', variant: 'destructive' });
+    }
+  };
+
+  const confirmDeletePermission = async (p: AccessPermission) => {
+    if (!confirm(`¿Estás seguro de que deseas revocar el acceso permanente para ${p.user_nombre}?`)) return;
+    try {
+      await deletePermission.mutateAsync(p.id);
+      toast({ title: 'Acceso revocado' });
     } catch {
       toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
     }
   };
 
-  const columns = [
-    {
-      header: 'Día',
-      accessor: (row: Schedule) => (
-        <span className="font-medium">
-          {row.is_anytime ? <span className="text-indigo-600 font-bold">Acceso Total</span> : getDiaLabel(row.day_of_week)}
-        </span>
-      ),
-    },
-    {
-      header: 'Hora inicio',
-      accessor: (row: Schedule) => (
-        <span className="font-mono">
-          {row.is_anytime ? <span className="text-indigo-600 font-bold">--:--</span> : formatTimeAMPM(row.start_time || '')}
-        </span>
-      ),
-    },
-    {
-      header: 'Hora fin',
-      accessor: (row: Schedule) => (
-        <span className="font-mono">
-          {row.is_anytime ? <span className="text-indigo-600 font-bold">--:--</span> : formatTimeAMPM(row.end_time || '')}
-        </span>
-      ),
-    },
-    {
-      header: 'Acciones',
-      accessor: (row: Schedule) => (
-        <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => openEdit(row)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="text-red-500" onClick={() => setItemToDelete(row)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   return (
     <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN']}>
       <AdminLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Horarios</h1>
-              <p className="text-slate-600 mt-1">Ventanas de tiempo para el control de acceso</p>
-            </div>
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-2" /> Nuevo Horario
-            </Button>
-          </div>
-
-          <DataTable data={horarios} columns={columns} isLoading={isLoading} searchPlaceholder="Buscar horarios..." />
-        </div>
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>{editing ? 'Editar Horario' : 'Nuevo Horario'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex items-center space-x-2 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                <input 
-                  type="checkbox" 
-                  id="is_anytime"
-                  className="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                  checked={formData.is_anytime}
-                  onChange={e => setFormData({ ...formData, is_anytime: e.target.checked })}
-                />
-                <div className="grid gap-1.5 leading-none">
-                  <Label htmlFor="is_anytime" className="text-indigo-900 font-bold cursor-pointer">
-                    Acceso Total
-                  </Label>
-                  <p className="text-xs text-indigo-600">
-                    Permite el ingreso en cualquier momento, ignorando restricciones de día y hora.
-                  </p>
-                </div>
-              </div>
-
-              {!formData.is_anytime && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="space-y-2">
-                    <Label>Día de la semana</Label>
-                    <Select value={formData.day_of_week}
-                      onValueChange={v => setFormData({ ...formData, day_of_week: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DIAS.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Hora inicio</Label>
-                        {formData.start_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.start_time)}</span>}
-                      </div>
-                      <Input type="time" value={formData.start_time}
-                        onChange={e => setFormData({ ...formData, start_time: e.target.value })} required />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Hora fin</Label>
-                        {formData.end_time && <span className="text-xs font-mono font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{formatTimeAMPM(formData.end_time)}</span>}
-                      </div>
-                      <Input type="time" value={formData.end_time}
-                        onChange={e => setFormData({ ...formData, end_time: e.target.value })} required />
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
-          <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader>
-              <DialogTitle>Confirmar eliminación</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <p className="text-sm text-slate-600">
-                ¿Estás seguro de que deseas eliminar este horario (
-                <strong>
-                  {itemToDelete?.is_anytime ? 'Acceso Total' : `${getDiaLabel(itemToDelete?.day_of_week)} ${formatTimeAMPM(itemToDelete?.start_time || '')} - ${formatTimeAMPM(itemToDelete?.end_time || '')}`}
-                </strong>)?
-              </p>
-              <p className="text-xs text-red-500 mt-2">Esta acción no se puede deshacer.</p>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setItemToDelete(null)}>Cancelar</Button>
-              <Button variant="destructive" onClick={confirmDelete} disabled={deleteHorario.isPending}>
-                {deleteHorario.isPending ? 'Eliminando...' : 'Eliminar'}
+          <div className="flex items-center justify-end">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="hidden lg:flex"
+              >
+                {isSidebarOpen ? 'Ocultar Panel' : 'Mostrar Panel'}
+              </Button>
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4 mr-2" /> Nuevo Horario
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+
+          <div className={cn(
+            "grid grid-cols-1 gap-6 h-[calc(100vh-250px)] transition-all duration-300",
+            isSidebarOpen ? "lg:grid-cols-4" : "lg:grid-cols-1"
+          )}>
+            <div className={cn("h-full", isSidebarOpen ? "lg:col-span-3" : "lg:col-span-1")}>
+              <WeeklyCalendar permissions={permissionsData?.results || []} />
+            </div>
+            {isSidebarOpen && (
+              <div className="lg:col-span-1 space-y-4 overflow-y-auto pr-2 animate-in slide-in-from-right-4 duration-300">
+                {showPermanent && (
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm animate-in fade-in zoom-in duration-200">
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-indigo-600 rounded-full" />
+                        Acceso Permanente
+                      </h3>
+                      <button 
+                        onClick={() => setShowPermanent(false)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <Plus className="h-4 w-4 rotate-45" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-4">Usuarios con acceso total sin restricciones de horario.</p>
+
+                    <div className="space-y-2">
+                      {permissionsData?.results.filter(p => p.schedule_is_anytime).length === 0 ? (
+                        <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-lg">
+                          <p className="text-xs text-slate-400">No hay accesos permanentes</p>
+                        </div>
+                      ) : (
+                        permissionsData?.results
+                          .filter(p => p.schedule_is_anytime)
+                          .map(p => (
+                            <div key={p.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100 group hover:border-indigo-200 transition-colors">
+                              <div className="flex justify-between items-start">
+                                <div className="overflow-hidden">
+                                  <p className="text-xs font-bold text-slate-900 truncate">{p.user_nombre}</p>
+                                  <p className="text-[10px] text-slate-500 truncate">{p.aula_code} — {p.aula_description}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => confirmDeletePermission(p)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                )}
+                {!showPermanent && (
+                  <button 
+                    onClick={() => setShowPermanent(true)}
+                    className="w-full py-2 text-[10px] font-bold text-slate-400 hover:text-slate-600 border border-dashed border-slate-200 rounded-lg transition-all"
+                  >
+                    Mostrar lista de acceso permanente
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <CalendarEventModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          initialData={selectedPermission}
+        />
       </AdminLayout>
     </RoleGuard>
   );

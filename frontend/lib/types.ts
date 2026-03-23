@@ -55,8 +55,10 @@ export interface Aula {
 export interface Schedule {
   id: string;
   day_of_week: number | null;  // 0=Mon … 6=Sun
+  date: string | null;         // "YYYY-MM-DD"
   start_time: string | null;   // "HH:MM:SS"
   end_time: string | null;
+  is_recurring: boolean;
   is_anytime: boolean;
 }
 
@@ -72,6 +74,10 @@ export interface AccessPermission {
   schedule_display?: string;
   schedule_day?: number;
   schedule_start?: string;
+  schedule_end?: string;
+  schedule_is_anytime?: boolean;
+  schedule_date?: string | null;
+  schedule_is_recurring?: boolean;
   user_email?: string;
   user_nombre?: string;
 }
@@ -90,6 +96,8 @@ export interface AccessEvent {
   reason?: string;
   alert_flag: boolean;
   correlation_id?: string;
+  score?: number;
+  response_time?: number;
 }
 
 // Legacy Alerta type — kept for backward compat but system uses AccessEvent
@@ -111,14 +119,37 @@ export interface OTPCode {
   message?: string;
 }
 
+export interface TrendData {
+  value: number;
+  isPositive: boolean;
+}
+
 export interface KPIData {
-  total_accesos_hoy: number;
+  total_accesos: number;
+  total_accesos_trend?: TrendData;
   tasa_exito: number;
+  tasa_exito_trend?: TrendData;
   tasa_rechazo: number;
+  tasa_rechazo_trend?: TrendData;
+  falsos_negativos: number;
+  falsos_negativos_trend?: TrendData;
+  uso_otp: number;
+  uso_otp_trend?: TrendData;
+  score_promedio: number;
+  score_promedio_trend?: TrendData;
+  tiempo_respuesta_promedio: number;
+  tiempo_respuesta_trend?: TrendData;
   alertas_activas: number;
+  alertas_activas_trend?: TrendData;
   usuarios_activos: number;
-  accesos_por_hora: { hora: string; cantidad: number }[];
+  usuarios_activos_trend?: TrendData;
+  accesos_por_hora?: { hora: string; cantidad: number }[];
+  accesos_por_dia?: { hora: string; cantidad: number }[];
   top_aulas: { aula: string; cantidad: number }[];
+  accesos_por_metodo?: { metodo: string; cantidad: number }[];
+  start_date: string;
+  end_date: string;
+  is_today: boolean;
 }
 
 export interface ReporteResumen {

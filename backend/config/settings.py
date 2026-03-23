@@ -23,7 +23,14 @@ load_dotenv(BASE_DIR / ".env")
 # ─────────────────────────────────────────
 SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,192.168.100.10,*").split(",")
+
+# In production, ALLOWED_HOSTS must be explicitly defined via environment variable
+_allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
+if _allowed_hosts_raw:
+    ALLOWED_HOSTS = _allowed_hosts_raw.split(",")
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "192.168.100.10"]
+
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
 
 # ─────────────────────────────────────────
@@ -110,11 +117,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///db.sqlite3")
 DATABASES = {
     "default": dj_database_url.config(
         default=DATABASE_URL,
-        conn_max_age=600,
+        conn_max_age=0,
     )
 }
 
-print(f'Current database engine is {DATABASES["default"]["ENGINE"]} → {DATABASES["default"]["NAME"]}')
+print(f'Current database engine is {DATABASES["default"]["ENGINE"]} -> {DATABASES["default"]["NAME"]}')
 
 
 # ─────────────────────────────────────────

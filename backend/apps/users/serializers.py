@@ -31,14 +31,13 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=128, required=False, write_only=True,
         help_text="Password for login."
     )
-    # PIN for biometric fallback
     pin = serializers.CharField(
-        max_length=10, min_length=4, required=False, write_only=True,
-        help_text="Biometric PIN fallback (4-10 digits)."
+        max_length=10, required=False, write_only=True,
+        help_text="Optional PIN for biometric fallback."
     )
-    # Read-only indicator
-    is_enrolled = serializers.SerializerMethodField(read_only=True)
-    roles = serializers.SerializerMethodField(read_only=True)
+    roles = serializers.SerializerMethodField()
+    is_enrolled = serializers.SerializerMethodField()
+
 
     class Meta:
         model = User
@@ -52,14 +51,13 @@ class UserSerializer(serializers.ModelSerializer):
             "residencia",
             "is_active",
             "created_at",
-            # write-only auth/pin fields
+            "roles",
+            "is_enrolled",
             "username",
             "password",
             "pin",
-            "is_enrolled",
-            "roles",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "roles"]
         extra_kwargs = {
             "dui": {"required": False, "allow_blank": True},
             "fecha_nacimiento": {"required": False, "allow_null": True},
