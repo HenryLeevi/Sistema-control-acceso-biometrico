@@ -184,7 +184,7 @@ export default function SubAdminPage() {
   const createAula = useCreateAula();
   const updateAula = useUpdateAula();
   const deleteAula = useDeleteAula();
-  const { data: permisosData, isLoading: permisosLoading, refetch: refetchPermisos } = usePermisos();
+  const { data: permisosData, isLoading: permisosLoading, refetch: refetchPermisos } = usePermissions();
   const updatePermiso = useUpdatePermiso();
   const deletePermiso = useDeletePermiso();
   const { data: horariosData, isLoading: horariosLoading } = useHorarios();
@@ -498,7 +498,7 @@ export default function SubAdminPage() {
               <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5"><KPICard title="Accesos Hoy" value={kpiData?.total_accesos || 0} icon={Activity} /><KPICard title="Tasa Éxito" value={`${kpiData?.tasa_exito || 0}%`} icon={CheckCircle} className="text-emerald-600" /><KPICard title="Tasa Rechazo" value={`${kpiData?.tasa_rechazo || 0}%`} icon={XCircle} className="text-red-600" /><KPICard title="Alertas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} className={kpiData?.alertas_activas ? 'animate-pulse text-amber-500' : ''} /><KPICard title="Usuarios" value={kpiData?.usuarios_activos || 0} icon={Users} /></div>
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card><CardHeader><CardTitle className="text-lg">Flujo Horario</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={250}><BarChart data={kpiData?.accesos_por_hora || kpiData?.accesos_por_dia || []}><XAxis dataKey="hora" /><YAxis /><Tooltip /><Bar dataKey="cantidad" fill="#0f172a" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
-                <Card><CardHeader><CardTitle className="text-lg">Accesos por Método</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={250}><BarChart data={kpiData?.accesos_por_metodo || []}><XAxis dataKey="metodo" /><YAxis /><Tooltip /><Bar dataKey="cantidad" fill="#6366f1" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
+                <Card><CardHeader><CardTitle className="text-lg">Accesos por Método</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={250}><BarChart data={kpiData?.accesos_por_metodo || []}><XAxis dataKey="metodo" /><YAxis /><Tooltip /><Bar dataKey="cantidad" fill="#0f172a" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
                 <Card className="lg:col-span-2"><CardHeader><CardTitle className="text-lg">Top Aulas (Accesos)</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={250}><BarChart data={kpiData?.top_aulas || []} layout="vertical"><XAxis type="number" hide /><YAxis dataKey="aula" type="category" /><Tooltip /><Bar dataKey="cantidad" fill="#0f172a" radius={[0, 4, 4, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
               </div>
             </TabsContent>
