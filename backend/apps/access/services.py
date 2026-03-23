@@ -82,11 +82,14 @@ class AccessService:
         from apps.biometric.models import Biometric
         from apps.access.models import Aula, AccessPermission, AccessEvent, Schedule
         from apps.biometric.services.aws_rekognition import search_face_by_image
+        import time
+        start_time = time.time()
         
         user = None
         reason = None
         alert_flag = False
         result = AccessResult.DENIED
+        score = None
         
         correlation_id = uuid.uuid4()
         
@@ -97,7 +100,9 @@ class AccessService:
                     # Decode base64 image from device
                     image_data = base64.b64decode(payload.data)
                     
-                    found_user_id = search_face_by_image(image_data)
+                    found_user_id, sim_score = search_face_by_image(image_data)
+                    score = sim_score
+                    
                     if found_user_id:
                         # Double check: confirm user exists AND has an active biometric enrollment
                         from apps.biometric.models import Biometric
@@ -228,6 +233,8 @@ class AccessService:
 
         # 3. Log Audit Event
         event_id = uuid.uuid4()
+        duration = time.time() - start_time
+        
         if aula:
             from apps.devices.models import Device
             d_id = payload.device_id
@@ -258,7 +265,9 @@ class AccessService:
                     result=result.value,
                     reason=reason,
                     alert_flag=alert_flag,
-                    correlation_id=correlation_id
+                    correlation_id=correlation_id,
+                    score=score,
+                    response_time=duration
                 )
                 event_id = event.id
             except Exception as e:

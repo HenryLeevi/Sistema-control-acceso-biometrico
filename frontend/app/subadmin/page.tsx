@@ -40,8 +40,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { 
-  Activity, CheckCircle, XCircle, AlertTriangle, Users, 
-  Phone, Upload, FileText, Download, Clock, Shield, Search, X, Calendar as CalendarIcon, Plus, Filter, RefreshCw, DoorOpen
+  Activity, CheckCircle, XCircle, AlertTriangle, Users, ShieldAlert, UserX, Clock, LayoutDashboard, 
+  FileText, Calendar, Search, Filter, Download, Plus, Trash2, Edit, ChevronRight, Phone
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfWeek, addDays, startOfDay, parseISO, isSameDay } from 'date-fns';
@@ -51,17 +51,60 @@ import { useToast } from '@/hooks/use-toast';
 import { KPICard } from '@/components/kpi-card';
 import { DataTable } from '@/components/data-table';
 import { WebcamCapture } from '@/components/webcam-capture';
+import { cn } from '@/lib/utils';
 
 const SOPORTE_TELEFONO = '+503 71112300';
 const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 const HORAS = Array.from({ length: 15 }, (_, i) => i + 7); // 7:00 to 21:00
 
+const DASHBOARD_COLORS = [
+  { value: '#3b82f6', bg: 'bg-blue-500' },
+  { value: '#22c55e', bg: 'bg-green-500' },
+  { value: '#ef4444', bg: 'bg-red-500' },
+  { value: '#f97316', bg: 'bg-orange-500' },
+  { value: '#8b5cf6', bg: 'bg-purple-500' },
+];
+
 export default function SubAdminPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [dashboardMode, setDashboardMode] = useState<'classic' | 'interactive'>('classic');
+  const [dashboardColor, setDashboardColor] = useState('#3b82f6');
+  const [dateRange, setDateRange] = useState<{ start_date: string; end_date: string } | undefined>(undefined);
+  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year' | 'custom'>('today');
+
+  const kpiFilters = dateRange;
+  const { data: kpiData, isLoading: kpiLoading } = useKPIData(kpiFilters);
+
+  const handlePeriodChange = (p: 'today' | 'week' | 'month' | 'year') => {
+    setPeriod(p);
+    const end = new Date();
+    let start = new Date();
+    
+    if (p === 'today') {
+      setDateRange(undefined); // No date range for today, API defaults to today
+      return;
+    } else if (p === 'week') {
+      start = addDays(end, -7);
+    } else if (p === 'month') {
+      start.setMonth(end.getMonth() - 1);
+    } else if (p === 'year') {
+      start.setFullYear(end.getFullYear() - 1);
+    }
+    
+    setDateRange({
+      start_date: format(start, 'yyyy-MM-dd'),
+      end_date: format(end, 'yyyy-MM-dd')
+    });
+  };
+
+  useEffect(() => {
+    const savedColor = localStorage.getItem('dashboard_color');
+    if (savedColor) setDashboardColor(savedColor);
+  }, []);
 
   // --- Dashboard Data ---
-  const { data: kpiData, isLoading: kpiLoading } = useKPIData();
+  // const { data: kpiData, isLoading: kpiLoading } = useKPIData(); // This line is now replaced by the one above
   const { data: alertasData } = useAlertas();
   const alertas = alertasData?.results || [];
   const alertasRecientes = alertas.slice(0, 5);
@@ -270,13 +313,56 @@ export default function SubAdminPage() {
                 <p className="text-slate-500 text-sm">Gestión operativa, horarios y monitoreo</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl">
-              <Phone className="h-4 w-4 text-amber-600" />
-              <div>
-                <p className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Contacto Emergencia</p>
-                <p className="text-sm font-bold text-amber-900 font-mono tracking-tighter">{SOPORTE_TELEFONO}</p>
-              </div>
-            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="flex flex-wrap bg-slate-100 p-1 rounded-lg border border-slate-200 shadow-sm shrink-0 gap-1">
+                    {(['today', 'week', 'month', 'year', 'custom'] as const).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => p === 'custom' ? setPeriod('custom') : handlePeriodChange(p as any)}
+                        className={cn(
+                          "px-3 py-1 text-xs font-bold rounded-md transition-all uppercase tracking-wider",
+                          period === p ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                        )}
+                      >
+                        {p === 'today' ? 'Hoy' : p === 'week' ? 'Semana' : p === 'month' ? 'Mes' : p === 'year' ? 'Año' : 'Personalizado'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {period === 'custom' && (
+                    <div className="flex items-center gap-2 animate-in slide-in-from-left-2 duration-300">
+                      <input 
+                        type="date" 
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium shadow-sm outline-none focus:ring-2 focus:ring-slate-300"
+                        value={dateRange?.start_date || ''}
+                        onChange={(e) => setDateRange(prev => ({ start_date: e.target.value, end_date: prev?.end_date || '' }))}
+                      />
+                      <span className="text-slate-400 text-xs font-bold">a</span>
+                      <input 
+                        type="date" 
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium shadow-sm outline-none focus:ring-2 focus:ring-slate-300"
+                        value={dateRange?.end_date || ''}
+                        onChange={(e) => setDateRange(prev => ({ start_date: prev?.start_date || '', end_date: e.target.value }))}
+                      />
+                    </div>
+                  )}
+
+                  {dashboardMode === 'interactive' && (
+                    <div className="hidden lg:flex items-center space-x-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                      {DASHBOARD_COLORS.map((c) => (
+                        <button
+                          key={c.value}
+                          onClick={() => setDashboardColor(c.value)}
+                          className={cn(
+                            "h-6 w-6 rounded-md transition-all",
+                            c.bg,
+                            dashboardColor === c.value ? "ring-4 ring-offset-2 ring-white scale-110" : "opacity-80 hover:opacity-100"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -307,12 +393,11 @@ export default function SubAdminPage() {
                   {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-28" />)}
                 </div>
               ) : (
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 lg:grid-cols-5">
-                  <KPICard title="Accesos Hoy" value={kpiData?.total_accesos_hoy || 0} icon={Activity} />
-                  <KPICard title="Tasa Éxito" value={`${kpiData?.tasa_exito || 0}%`} icon={CheckCircle} className="text-emerald-600" />
-                  <KPICard title="Tasa Rechazo" value={`${kpiData?.tasa_rechazo || 0}%`} icon={XCircle} className="text-red-600" />
-                  <KPICard title="Alertas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} className={kpiData?.alertas_activas ? 'text-amber-500 animate-pulse' : ''} />
-                  <KPICard title="Usuarios" value={kpiData?.usuarios_activos || 0} icon={Users} />
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                  <KPICard title="Accesos Totales" value={kpiData?.total_accesos || 0} icon={Activity} description="En el periodo seleccionado" trend={kpiData?.total_accesos_trend} />
+                  <KPICard title="Tasa Éxito" value={`${kpiData?.tasa_exito || 0}%`} icon={CheckCircle} className="text-emerald-600" trend={kpiData?.tasa_exito_trend} />
+                  <KPICard title="Tasa Rechazo" value={`${kpiData?.tasa_rechazo || 0}%`} icon={XCircle} className="text-red-600" trend={kpiData?.tasa_rechazo_trend} />
+                  <KPICard title="Alertas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} className={kpiData?.alertas_activas ? 'text-amber-500 animate-pulse' : ''} trend={kpiData?.alertas_activas_trend} />
                 </div>
               )}
 
@@ -321,12 +406,12 @@ export default function SubAdminPage() {
                   <CardHeader className="bg-slate-50/50 border-b border-slate-100"><CardTitle className="text-lg">Flujo Horario</CardTitle></CardHeader>
                   <CardContent className="pt-6">
                     <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={kpiData?.accesos_por_hora || []}>
+                      <BarChart data={kpiData?.accesos_por_hora || kpiData?.accesos_por_dia || []}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="hora" axisLine={false} tickLine={false} fontSize={10} />
                         <YAxis axisLine={false} tickLine={false} fontSize={10} />
                         <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                        <Bar dataKey="cantidad" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={20} />
+                        <Bar dataKey="cantidad" fill={dashboardColor} radius={[4, 4, 0, 0]} barSize={20} />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -341,7 +426,7 @@ export default function SubAdminPage() {
                         <XAxis type="number" hide />
                         <YAxis dataKey="aula" type="category" width={40} axisLine={false} tickLine={false} fontSize={10} />
                         <Tooltip />
-                        <Bar dataKey="cantidad" fill="#0f172a" radius={[0, 4, 4, 0]} barSize={20} />
+                        <Bar dataKey="cantidad" fill={dashboardColor} radius={[0, 4, 4, 0]} barSize={20} />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>

@@ -10,6 +10,7 @@ Models:
 
 import uuid
 from django.db import models
+from django.utils import timezone
 from apps.users.models import User
 from apps.devices.models import Device
 
@@ -162,7 +163,7 @@ class AccessEvent(models.Model):
         on_delete=models.PROTECT,
         related_name="access_events",
     )
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
     method = models.CharField(max_length=10, choices=Method.choices)
     result = models.CharField(max_length=10, choices=Result.choices)
     reason = models.TextField(blank=True, null=True, help_text="Denial reason or additional context.")
@@ -175,6 +176,19 @@ class AccessEvent(models.Model):
         help_text="Correlates events across device and backend for distributed tracing.",
         db_index=True,
     )
+    score = models.FloatField(
+        null=True, 
+        blank=True, 
+        help_text="Biometric similarity score (if applicable)."
+    )
+    response_time = models.FloatField(
+        null=True, 
+        blank=True, 
+        help_text="Time taken to process the request in seconds."
+    )
+    alert_reviewed = models.BooleanField(default=False)
+    is_false_negative = models.BooleanField(default=False)
+    validation_time = models.FloatField(null=True, blank=True)
 
     class Meta:
         db_table = "access_events"

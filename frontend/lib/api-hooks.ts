@@ -284,20 +284,21 @@ export const useAlertas = () => {
   return useQuery({
     queryKey: ['alertas'],
     queryFn: async () => {
-      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/');
+      return apiClient<PaginatedResponse<AccessEvent>>('/access/events/?alert_flag=true');
     },
   });
 };
 
 // ── KPI (/api/access/kpi/) ──────────────────────────
 
-export const useKPIData = () => {
+export const useKPIData = (filters?: Record<string, string>) => {
   return useQuery({
-    queryKey: ['kpi'],
+    queryKey: ['kpi', filters],
     queryFn: async () => {
-      return apiClient<KPIData>('/access/kpi/');
+      const params = filters ? '?' + new URLSearchParams(filters).toString() : '';
+      return apiClient<KPIData>(`/access/kpi/${params}`);
     },
-    refetchInterval: 30000,
+    refetchInterval: (filters?.start_date && filters?.end_date) ? undefined : 30000,
   });
 };
 

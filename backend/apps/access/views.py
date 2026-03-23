@@ -22,7 +22,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiPara
 from drf_spectacular.types import OpenApiTypes
 
 from django.utils import timezone
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg
 from django.db.models.functions import TruncHour, TruncDate
 from django.http import HttpResponse
 from datetime import datetime, timedelta
@@ -307,43 +307,126 @@ class KPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        today = timezone.localdate()
-        events_today = AccessEvent.objects.filter(timestamp__date=today)
+        start_str = request.query_params.get('start_date')
+        end_str = request.query_params.get('end_date')
 
-        total = events_today.count()
-        success = events_today.filter(result="SUCCESS").count()
-        denied = events_today.filter(result="DENIED").count()
+        # 1. Period Calculation
+        try:
+            if start_str and end_str:
+                start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
+            else:
+                start_date = timezone.localdate()
+                end_date = start_date
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido. Use YYYY-MM-DD."}, status=400)
 
-        by_hour = (
-            events_today
-            .annotate(hora_trunc=TruncHour("timestamp"))
-            .values("hora_trunc")
-            .annotate(cantidad=Count("id"))
-            .order_by("hora_trunc")
-        )
-        accesos_por_hora = [
-            {"hora": f"{item['hora_trunc'].hour:02d}:00", "cantidad": item["cantidad"]}
-            for item in by_hour if item["hora_trunc"]
-        ]
+        delta = (end_date - start_date).days + 1
+        prev_start = start_date - timedelta(days=delta)
+        prev_end = end_date - timedelta(days=delta)
+
+        # 2. Query Helper
+        def get_stats(s_date, e_date):
+            qs = AccessEvent.objects.filter(timestamp__date__range=(s_date, e_date))
+            return qs.aggregate(
+                total=Count("id"),
+                success=Count("id", filter=Q(result="SUCCESS")),
+                denied=Count("id", filter=Q(result="DENIED")),
+                falsos_negativos=Count("id", filter=Q(method="FACE", result="DENIED")),
+                uso_otp=Count("id", filter=Q(method="OTP")),
+                score_promedio=Avg("score", filter=Q(method="FACE", score__isnull=False)),
+                tiempo_respuesta_promedio=Avg("response_time"),
+                alertas_activas=Count("id", filter=Q(alert_flag=True))
+            )
+
+        curr_stats = get_stats(start_date, end_date)
+        prev_stats = get_stats(prev_start, prev_end)
+
+        # 3. Trend Calculation Helper
+        def calc_trend(curr, prev):
+            if not prev: return {"value": 0, "isPositive": True} if not curr else {"value": 100, "isPositive": True}
+            diff = ((curr - prev) / prev) * 100
+            return {"value": round(abs(diff), 1), "isPositive": diff >= 0}
+
+        def calc_inverse_trend(curr, prev): # For "bad" metrics like rejection or response time
+            trend = calc_trend(curr, prev)
+            # Inverting isPositive doesn't make sense for the value, but for UI color. 
+            # We'll just return the raw trend and let the UI decide if "Positive" is Green or Red.
+            return trend
+
+        # 4. Chart Data (Dynamic Granularity)
+        events_curr = AccessEvent.objects.filter(timestamp__date__range=(start_date, end_date))
+        
+        if delta <= 1:
+            # Group by Hour if single day
+            by_time = (
+                events_curr
+                .annotate(period=TruncHour("timestamp"))
+                .values("period")
+                .annotate(cantidad=Count("id"))
+                .order_by("period")
+            )
+            chart_data = [
+                {"hora": f"{item['period'].hour:02d}:00", "cantidad": item["cantidad"]}
+                for item in by_time if item["period"]
+            ]
+            chart_key = "accesos_por_hora"
+        else:
+            # Group by Date if multiple days
+            by_time = (
+                events_curr
+                .annotate(period=TruncDate("timestamp"))
+                .values("period")
+                .annotate(cantidad=Count("id"))
+                .order_by("period")
+            )
+            chart_data = [
+                {"hora": item['period'].strftime('%d %b'), "cantidad": item["cantidad"]}
+                for item in by_time if item["period"]
+            ]
+            chart_key = "accesos_por_dia"
 
         top_aulas = (
-            events_today
+            events_curr
             .values("aula__code")
             .annotate(cantidad=Count("id"))
             .order_by("-cantidad")[:5]
         )
 
+        total = curr_stats["total"] or 0
+        prev_total = prev_stats["total"] or 0
+        success = curr_stats["success"] or 0
+        prev_success = prev_stats["success"] or 0
+        
+        tasa_exito = (success / total * 100) if total else 0
+        prev_tasa_exito = (prev_success / prev_total * 100) if prev_total else 0
+
         return Response({
-            "total_accesos_hoy": total,
-            "tasa_exito": round(success / total * 100, 1) if total else 0,
-            "tasa_rechazo": round(denied / total * 100, 1) if total else 0,
-            "alertas_activas": events_today.filter(alert_flag=True).count(),
+            "total_accesos": total,
+            "total_accesos_trend": calc_trend(total, prev_total),
+            "tasa_exito": round(tasa_exito, 1),
+            "tasa_exito_trend": calc_trend(tasa_exito, prev_tasa_exito),
+            "tasa_rechazo": round(100 - tasa_exito, 1) if total else 0,
+            "tasa_rechazo_trend": calc_trend(100 - tasa_exito, 100 - prev_tasa_exito) if total and prev_total else {"value":0, "isPositive":True},
+            "falsos_negativos": curr_stats["falsos_negativos"] or 0,
+            "falsos_negativos_trend": calc_trend(curr_stats["falsos_negativos"] or 0, prev_stats["falsos_negativos"] or 0),
+            "uso_otp": curr_stats["uso_otp"] or 0,
+            "uso_otp_trend": calc_trend(curr_stats["uso_otp"] or 0, prev_stats["uso_otp"] or 0),
+            "score_promedio": round(curr_stats["score_promedio"] or 0, 1),
+            "score_promedio_trend": calc_trend(curr_stats["score_promedio"] or 0, prev_stats["score_promedio"] or 0),
+            "tiempo_respuesta_promedio": round(curr_stats["tiempo_respuesta_promedio"] or 0, 3),
+            "tiempo_respuesta_trend": calc_trend(curr_stats["tiempo_respuesta_promedio"] or 0, prev_stats["tiempo_respuesta_promedio"] or 0),
+            "alertas_activas": curr_stats["alertas_activas"] or 0,
+            "alertas_activas_trend": calc_trend(curr_stats["alertas_activas"] or 0, prev_stats["alertas_activas"] or 0),
             "usuarios_activos": LocalUser.objects.filter(is_active=True).count(),
-            "accesos_por_hora": accesos_por_hora,
+            chart_key: chart_data,
             "top_aulas": [
                 {"aula": item["aula__code"] or "N/A", "cantidad": item["cantidad"]}
                 for item in top_aulas
             ],
+            "start_date": str(start_date),
+            "end_date": str(end_date),
+            "is_today": start_date == timezone.localdate() and end_date == timezone.localdate()
         })
 
 

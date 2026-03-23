@@ -110,11 +110,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///db.sqlite3")
 DATABASES = {
     "default": dj_database_url.config(
         default=DATABASE_URL,
-        conn_max_age=600,
+        conn_max_age=0,
     )
 }
 
-print(f'Current database engine is {DATABASES["default"]["ENGINE"]} → {DATABASES["default"]["NAME"]}')
+print(f'Current database engine is {DATABASES["default"]["ENGINE"]} -> {DATABASES["default"]["NAME"]}')
 
 
 # ─────────────────────────────────────────
