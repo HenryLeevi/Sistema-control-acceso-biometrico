@@ -65,4 +65,5 @@ npm run dev
 http://localhost:3000
 
 # update deploy frontend
+# final fix cors
 
