@@ -568,7 +568,6 @@ export default function UsuariosPage() {
                         <Upload className="h-6 w-6" />
                       </div>
                       <span className="text-sm font-bold text-indigo-700">Presiona para elegir archivos</span>
-                      <p className="text-xs text-indigo-500 mt-1">Recomendado: 3 fotos de frente</p>
                       <input 
                         id="bio-upload"
                         type="file" 
@@ -605,13 +604,6 @@ export default function UsuariosPage() {
                     )}
                   </div>
                 </div>
-                
-                <div className="relative text-center text-xs font-medium text-slate-500 py-2">
-                  <span className="bg-white px-2 relative z-10">O usar cámara web</span>
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-                </div>
-
-                <WebcamCapture onSave={(files) => handleFileChange(files)} maxPhotos={3} />
               </div>
               
               <div className="flex justify-end gap-2 pt-4 border-t">
