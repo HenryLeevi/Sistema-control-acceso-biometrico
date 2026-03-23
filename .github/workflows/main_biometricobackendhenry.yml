@@ -1,0 +1,60 @@
+name: Build and deploy Python app to Azure Web App - biometricobackendhenry
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies (backend)
+        run: |
+          cd backend
+          python -m venv antenv
+          source antenv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: backend
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-app
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_787015FB4E5445E591F6503183C12B8C }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7756064B472A4A84BADC02812C31DEFF }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8C7C8DCE2FE649E18EEAF78930D45126 }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'biometricobackendhenry'
+          slot-name: 'Production'
+          package: .

@@ -649,7 +649,6 @@ export default function SubAdminPage() {
                 <label htmlFor="bio-up" className="w-full cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-indigo-200 bg-indigo-50/30 rounded-xl p-8 hover:bg-indigo-50 hover:border-indigo-400 transition-all group">
                   <div className="bg-indigo-100 p-3 rounded-full text-indigo-600 mb-3 group-hover:scale-110 transition-transform"><Upload className="h-6 w-6" /></div>
                   <span className="text-sm font-bold text-indigo-700">Presiona para elegir archivos</span>
-                  <p className="text-xs text-indigo-500 mt-1">Recomendado: 3 fotos de frente</p>
                   <input id="bio-up" type="file" multiple className="hidden" onChange={e => handleFileChange(e.target.files)} />
                 </label>
                 {bioPreviews.length > 0 && (
@@ -663,8 +662,6 @@ export default function SubAdminPage() {
                   </div>
                 )}
               </div>
-              <div className="relative text-center text-xs font-medium text-slate-500 py-2"><span className="bg-white px-2 relative z-10">O usar cámara web</span><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div></div>
-              <WebcamCapture onSave={handleFileChange} maxPhotos={3} />
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setIsBioDialogOpen(false)}>Cancelar</Button>
                 <Button onClick={handleBioSubmit} className="bg-indigo-600 text-white" disabled={enrolarBiometria.isPending}>{enrolarBiometria.isPending ? 'Procesando...' : 'Guardar Biometría'}</Button>
