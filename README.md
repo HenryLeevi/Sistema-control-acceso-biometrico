@@ -67,4 +67,5 @@ http://localhost:3000
 
 # update deploy frontend
 # final fix cors
+#variables aws
 
