@@ -38,6 +38,7 @@ const allNavItems: NavItem[] = [
   { label: 'Mis Horarios', href: '/docente',           icon: CalendarDays, roles: ['DOCENTE'] },
   { label: 'Generar OTP',  href: '/docente',           icon: QrCode,       roles: ['DOCENTE'] },
   { label: 'Mi Historial', href: '/docente/historial', icon: FileText,     roles: ['DOCENTE'] },
+  { label: 'Documentación', href: '/admin/documentacion', icon: FileText,   roles: ['ADMIN', 'SUBADMIN'] },
 ];
 
 
