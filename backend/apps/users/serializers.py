@@ -31,6 +31,14 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=128, required=False, write_only=True,
         help_text="Password for login."
     )
+    # PIN for biometric fallback
+    pin = serializers.CharField(
+        max_length=10, min_length=4, required=False, write_only=True,
+        help_text="Biometric PIN fallback (4-10 digits)."
+    )
+    # Read-only indicator
+    is_enrolled = serializers.SerializerMethodField(read_only=True)
+    roles = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -44,9 +52,12 @@ class UserSerializer(serializers.ModelSerializer):
             "residencia",
             "is_active",
             "created_at",
-            # write-only auth fields
+            # write-only auth/pin fields
             "username",
             "password",
+            "pin",
+            "is_enrolled",
+            "roles",
         ]
         read_only_fields = ["id", "created_at"]
         extra_kwargs = {
@@ -70,6 +81,14 @@ class UserSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         return value.lower().strip()
 
+    def get_is_enrolled(self, obj):
+        from apps.biometric.models import Biometric
+        return Biometric.objects.filter(user=obj, is_active=True).exists()
+
+    def get_roles(self, obj):
+        """Returns a list of role names (e.g. ['DOCENTE']) for the user."""
+        return list(obj.user_roles.values_list("role__name", flat=True))
+
     def create(self, validated_data):
         """
         On creation:
@@ -81,6 +100,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         username = validated_data.pop("username", None)
         password = validated_data.pop("password", None)
+        pin = validated_data.pop("pin", None)
 
         if not username:
             raise serializers.ValidationError(
@@ -110,6 +130,23 @@ class UserSerializer(serializers.ModelSerializer):
             is_active=user.is_active,
         )
 
+        # Create PIN if provided
+        if pin:
+            from .models import PinContingency
+            from django.utils import timezone
+            from datetime import timedelta
+            from django.contrib.auth.hashers import make_password
+            
+            # Deactivate old pins if any
+            PinContingency.objects.filter(user=user, is_active=True).update(is_active=False)
+            
+            PinContingency.objects.create(
+                user=user,
+                pin_hash=make_password(pin),
+                is_active=True,
+                expires_at=timezone.now() + timedelta(days=365) # 1 year by default
+            )
+
         return user
 
     def update(self, instance, validated_data):
@@ -122,6 +159,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         username = validated_data.pop("username", None)
         password = validated_data.pop("password", None)
+        pin = validated_data.pop("pin", None)
 
         # Update the app user
         instance = super().update(instance, validated_data)
@@ -148,6 +186,23 @@ class UserSerializer(serializers.ModelSerializer):
                     last_name=instance.apellido,
                     is_active=instance.is_active,
                 )
+
+        # Sync PIN if provided
+        if pin:
+            from .models import PinContingency
+            from django.utils import timezone
+            from datetime import timedelta
+            from django.contrib.auth.hashers import make_password
+            
+            # Deactivate old pins
+            PinContingency.objects.filter(user=instance, is_active=True).update(is_active=False)
+            
+            PinContingency.objects.create(
+                user=instance,
+                pin_hash=make_password(pin),
+                is_active=True,
+                expires_at=timezone.now() + timedelta(days=365)
+            )
 
         return instance
 

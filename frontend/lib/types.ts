@@ -21,6 +21,8 @@ export interface User {
   fecha_nacimiento?: string | null;
   residencia?: string;
   is_active: boolean;
+  is_enrolled?: boolean;
+  pin?: string;
   created_at: string;
   // Present in login/me response — not in base UserSerializer
   username?: string;

@@ -154,12 +154,16 @@ class AccessEvent(models.Model):
     )
     aula = models.ForeignKey(
         Aula,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="access_events",
     )
     device = models.ForeignKey(
         Device,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="access_events",
     )
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -175,6 +179,11 @@ class AccessEvent(models.Model):
         help_text="Correlates events across device and backend for distributed tracing.",
         db_index=True,
     )
+    alert_reviewed = models.BooleanField(default=False)
+    is_false_negative = models.BooleanField(default=False)
+    score = models.FloatField(null=True, blank=True)
+    validation_time = models.FloatField(null=True, blank=True)
+    response_time = models.FloatField(null=True, blank=True)
 
     class Meta:
         db_table = "access_events"
