@@ -164,12 +164,16 @@ class AccessEvent(models.Model):
     )
     aula = models.ForeignKey(
         Aula,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="access_events",
     )
     device = models.ForeignKey(
         Device,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="access_events",
     )
     timestamp = models.DateTimeField(default=timezone.now, db_index=True)

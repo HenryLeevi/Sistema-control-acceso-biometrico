@@ -263,7 +263,7 @@ export const useDeletePermiso = () => {
 
 export const useValidateAccess = () => {
   return useMutation({
-    mutationFn: async (payload: { method: 'FACE' | 'PIN' | 'MANUAL', data: string, aula_id: string, device_id?: string }) => {
+    mutationFn: async (payload: { method: 'FACE' | 'PIN' | 'OTP' | 'MANUAL', data: string, aula_id: string, device_id?: string }) => {
       return apiClient<any>('/access/validate/', { method: 'POST', body: JSON.stringify(payload) });
     },
   });

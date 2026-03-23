@@ -124,18 +124,22 @@ class AccessService:
                 # payload.data contains the plain text PIN
                 now = timezone.now()
                 active_pins = PinContingency.objects.filter(is_active=True, expires_at__gt=now).select_related("user")
+                logger.info(f"PIN Validation: Found {active_pins.count()} active PINs to check.")
                 
                 for pin_record in active_pins:
                     match = False
                     try:
                         # 1. Try secure Django hashing
                         match = check_password(payload.data, pin_record.pin_hash)
-                    except Exception:
+                        logger.debug(f"PIN Match check for user {pin_record.user.email}: {match}")
+                    except Exception as e:
                         # 2. Fallback to plain text comparison for legacy/unhashed PINs
+                        logger.warning(f"check_password failed for user {pin_record.user.email}, falling back to plain text check: {e}")
                         match = (payload.data == pin_record.pin_hash)
                     
                     if match:
                         user = pin_record.user
+                        logger.info(f"PIN Validation Successful for user: {user.email}")
                         break
                         
                 if not user:
@@ -249,29 +253,17 @@ class AccessService:
         
         if aula:
             from apps.devices.models import Device
-            d_id = payload.device_id
-            if not d_id:
-                # Fallback to the first found device if not provided (rare if coming from Pi)
-                dev_obj = Device.objects.first()
-                if dev_obj:
-                    d_id = dev_obj.id
-                else:
-                    logger.warning("Access attempt without a registered device.")
-                    # Return without creating event if NO device exists at all
-                    return AccessValidationOutput(
-                        result=result,
-                        user_id=user.id if user else None,
-                        user_full_name=user.full_name if user else None,
-                        reason=reason,
-                        alert_flag=alert_flag,
-                        correlation_id=correlation_id,
-                        event_id=event_id
-                    )
+            dev_obj = Device.objects.first()
+            if dev_obj:
+                d_id = dev_obj.id
+            else:
+                logger.warning("Access attempt without a registered device.")
 
+        if d_id:
             try:
                 event = AccessEvent.objects.create(
                     user=user,
-                    aula_id=aula.id,
+                    aula_id=aula.id if aula else None,
                     device_id=d_id,
                     method=payload.method.value,
                     result=result.value,

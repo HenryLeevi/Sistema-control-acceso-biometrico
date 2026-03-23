@@ -170,7 +170,7 @@ function BiometricoContent() {
   const handlePinKey = (key: string) => {
     if (key === 'DEL') {
       setPinValue(prev => prev.slice(0, -1));
-    } else if (pinValue.length < 8) {
+    } else if (pinValue.length < 6) {
       setPinValue(prev => prev + key);
     }
   };
@@ -217,7 +217,7 @@ function BiometricoContent() {
       isValidatingRef.current = true;
       try {
         const res = await validateAccess.mutateAsync({
-          method: 'MANUAL', // We'll use MANUAL for OTP currently or add OTP method
+          method: 'OTP',
           data: otpValue,
           aula_id: currentAulaId
         });
@@ -429,9 +429,17 @@ function BiometricoContent() {
               <p className="text-xs text-gray-400">Intento {pinIntentos + 1}/3</p>
             </div>
 
-            {/* PIN dots */}
-            <div className="h-6 text-xl tracking-widest font-mono text-white flex justify-center items-center">
-              {pinValue.length === 0 ? <span className="text-white/20">...</span> : '*'.repeat(pinValue.length)}
+            <div className="h-6 text-xl tracking-widest font-mono text-white flex justify-center items-center gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`h-3 w-3 rounded-full border-2 transition-all duration-300 ${
+                    i < pinValue.length 
+                      ? 'bg-purple-500 border-purple-400 scale-110 shadow-[0_0_10px_rgba(168,85,247,0.5)]' 
+                      : 'bg-white/5 border-white/10'
+                  }`}
+                />
+              ))}
             </div>
 
             {/* Numpad */}
