@@ -299,7 +299,7 @@ erDiagram
             <div className="space-y-6">
               <h2 className="text-3xl font-bold text-slate-900">Portal del Docente (PWA)</h2>
               <p className="text-slate-600 leading-relaxed font-light italic">
-                 "Optimizado para que el docente tenga el control de su acceso y horarios en la palma de su mano, incluso sin conexión a internet estable mediante service workers."
+                 Optimizado para que el docente tenga el control de su acceso y horarios en la palma de su mano, incluso sin conexión a internet estable mediante service workers.
               </p>
               <div className="flex gap-4">
                 <div className="bg-slate-100 p-4 rounded-3xl h-fit border border-slate-200">
