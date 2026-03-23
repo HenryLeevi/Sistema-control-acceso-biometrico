@@ -53,7 +53,7 @@ Diseñado para integrarse con un backend **API REST (Django DRF)** utilizando:
 ```bash
 npm install
 
-.env.local
+.env.local 
 
 
 
