@@ -146,6 +146,7 @@ export interface KPIData {
   accesos_por_hora?: { hora: string; cantidad: number }[];
   accesos_por_dia?: { hora: string; cantidad: number }[];
   top_aulas: { aula: string; cantidad: number }[];
+  accesos_por_metodo?: { metodo: string; cantidad: number }[];
   start_date: string;
   end_date: string;
   is_today: boolean;

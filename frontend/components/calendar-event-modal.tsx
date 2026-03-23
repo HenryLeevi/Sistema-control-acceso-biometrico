@@ -27,9 +27,11 @@ interface CalendarEventModalProps {
     end_time: string;
     is_anytime: boolean;
   };
+  allowedRoles?: string[];
+  readOnly?: boolean;
 }
 
-export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialData }: CalendarEventModalProps) {
+export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialData, allowedRoles, readOnly }: CalendarEventModalProps) {
   const [formData, setFormData] = useState({
     user: '',
     aula: '',
@@ -44,7 +46,9 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
   const { data: usuariosData, isLoading: loadingUsers } = useUsuarios();
   const { data: aulasData, isLoading: loadingAulas } = useAulas();
 
-  const usuarios = usuariosData?.results || [];
+  const usuarios = (usuariosData?.results || []).filter((u: User) => 
+    !allowedRoles || (u.roles && u.roles.some(r => allowedRoles.includes(r)))
+  );
   const aulas = aulasData?.results || [];
 
   useEffect(() => {
@@ -89,7 +93,7 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
       <DialogContent className="w-[95vw] max-w-[425px] overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {initialData?.id ? 'Editar Horario' : 'Nuevo Horario'}
+            {readOnly ? 'Detalles del Horario' : (initialData?.id ? 'Editar Horario' : 'Nuevo Horario')}
           </DialogTitle>
         </DialogHeader>
         
@@ -97,7 +101,7 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase text-slate-500">Docente / Usuario</Label>
-              <Select value={formData.user} onValueChange={v => setFormData({ ...formData, user: v })}>
+              <Select value={formData.user} onValueChange={v => setFormData({ ...formData, user: v })} disabled={readOnly}>
                 <SelectTrigger className="bg-slate-50 border-slate-200">
                   <SelectValue placeholder="Seleccionar docente..." />
                 </SelectTrigger>
@@ -114,7 +118,7 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
 
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase text-slate-500">Aula / Puerta</Label>
-              <Select value={formData.aula} onValueChange={v => setFormData({ ...formData, aula: v })}>
+              <Select value={formData.aula} onValueChange={v => setFormData({ ...formData, aula: v })} disabled={readOnly}>
                 <SelectTrigger className="bg-slate-50 border-slate-200">
                   <SelectValue placeholder="Seleccionar recinto..." />
                 </SelectTrigger>
@@ -137,7 +141,8 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
                 id="anytime" 
                 checked={formData.is_anytime}
                 onChange={(e) => setFormData(prev => ({ ...prev, is_anytime: e.target.checked }))}
-                className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={readOnly}
               />
             </div>
             
@@ -153,7 +158,8 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
                 id="recurring" 
                 checked={formData.is_recurring}
                 onChange={(e) => setFormData(prev => ({ ...prev, is_recurring: e.target.checked }))}
-                className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="h-5 w-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={readOnly}
               />
             </div>
           </div>
@@ -170,8 +176,9 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
                   <Select 
                     value={String(formData.day_of_week)} 
                     onValueChange={(v) => setFormData(prev => ({ ...prev, day_of_week: parseInt(v) }))}
+                    disabled={readOnly}
                   >
-                    <SelectTrigger className="bg-white border-slate-200 h-11 focus:ring-indigo-500 focus:border-indigo-500">
+                    <SelectTrigger className="bg-white border-slate-200 h-11 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60">
                       <SelectValue placeholder="Seleccionar día" />
                     </SelectTrigger>
                     <SelectContent>
@@ -190,8 +197,9 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                    className="bg-white border-slate-200 h-11 focus:ring-indigo-500 focus:border-indigo-500 font-medium"
+                    className="bg-white border-slate-200 h-11 focus:ring-indigo-500 focus:border-indigo-500 font-medium disabled:opacity-60"
                     placeholder="DD/MM/AAAA"
+                    disabled={readOnly}
                   />
                   <p className="text-[9px] text-slate-400 mt-1 italic pl-1">Selecciona la fecha específica en el calendario</p>
                 </div>
@@ -208,7 +216,8 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
                       type="time"
                       value={formData.start_time}
                       onChange={e => setFormData({ ...formData, start_time: e.target.value })}
-                      className="bg-white border-slate-200 h-11 font-mono text-sm pl-9"
+                      className="bg-white border-slate-200 h-11 font-mono text-sm pl-9 disabled:opacity-60"
+                      disabled={readOnly}
                     />
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   </div>
@@ -223,7 +232,8 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
                       type="time"
                       value={formData.end_time}
                       onChange={e => setFormData({ ...formData, end_time: e.target.value })}
-                      className="bg-white border-slate-200 h-11 font-mono text-sm pl-9"
+                      className="bg-white border-slate-200 h-11 font-mono text-sm pl-9 disabled:opacity-60"
+                      disabled={readOnly}
                     />
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   </div>
@@ -235,47 +245,58 @@ export function CalendarEventModal({ isOpen, onClose, onSave, onDelete, initialD
 
         <div className="flex flex-col gap-3 mt-4">
           <div className="grid grid-cols-1 gap-2">
-            <Button 
-              onClick={handleSave} 
-              disabled={!formData.user || !formData.aula}
-              className="w-full h-12 bg-[#171717] text-white hover:bg-blue-700 shadow-lg shadow-blue-100 font-bold text-base"
-            >
-              {initialData?.id ? 'Guardar' : 'Crear Horario'}
-            </Button>
-            
-            <div className={cn(
-              "grid gap-2",
-              initialData?.id ? "grid-cols-2" : "grid-cols-1"
-            )}>
-              <Button 
-                variant="outline" 
-                onClick={onClose}
-                className="w-full h-11 border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-                type="button"
-              >
-                Cancelar
-              </Button>
-              {initialData?.id && (
+            {!readOnly ? (
+              <>
                 <Button 
-                  variant="secondary"
-                  onClick={handleSaveAsNew}
+                  onClick={handleSave} 
                   disabled={!formData.user || !formData.aula}
-                  className="w-full h-11 bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 font-semibold"
-                  type="button"
+                  className="w-full h-12 bg-[#171717] text-white hover:bg-blue-700 shadow-lg shadow-blue-100 font-bold text-base"
                 >
-                  Duplicar
+                  {initialData?.id ? 'Guardar' : 'Crear Horario'}
                 </Button>
-              )}
-            </div>
+                
+                <div className={cn(
+                  "grid gap-2",
+                  initialData?.id ? "grid-cols-2" : "grid-cols-1"
+                )}>
+                  <Button 
+                    variant="outline" 
+                    onClick={onClose}
+                    className="w-full h-11 border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                    type="button"
+                  >
+                    Cancelar
+                  </Button>
+                  {initialData?.id && (
+                    <Button 
+                      variant="secondary"
+                      onClick={handleSaveAsNew}
+                      disabled={!formData.user || !formData.aula}
+                      className="w-full h-11 bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200 font-semibold"
+                      type="button"
+                    >
+                      Duplicar
+                    </Button>
+                  )}
+                </div>
 
-            {initialData?.id && (
+                {initialData?.id && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => onDelete?.(initialData.id!)}
+                    className="w-full h-11 text-red-500 hover:text-red-600 hover:bg-red-50 mt-1"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Eliminar Horario
+                  </Button>
+                )}
+              </>
+            ) : (
               <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => onDelete?.(initialData.id!)}
-                className="w-full h-11 text-red-500 hover:text-red-600 hover:bg-red-50 mt-1"
+                onClick={onClose} 
+                className="w-full h-12 bg-slate-900 text-white font-bold text-base"
               >
-                <Trash2 className="h-4 w-4 mr-2" /> Eliminar Horario
+                Cerrar
               </Button>
             )}
           </div>

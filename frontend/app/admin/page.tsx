@@ -32,6 +32,7 @@ const WIDGET_OPTIONS = [
   { id: 'uso_otp', icon: Clock, label: 'Uso OTP' },
   { id: 'score_promedio', icon: Activity, label: 'Score Prom.' },
   { id: 'tiempo_respuesta', icon: Clock, label: 'T. Respuesta' },
+  { id: 'accesos_por_metodo', label: 'Por Método', icon: LayoutDashboard },
 ];
 
 interface WidgetConfig {
@@ -311,37 +312,58 @@ function AdminDashboard() {
             </div>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-2 mt-6">
+          <div className="grid gap-6 lg:grid-cols-3 mt-6">
             <Card className="border-none shadow-sm overflow-hidden bg-white">
               <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-700">Flujo Temporal ({period === 'today' ? 'Hoy' : 'Periodo'})</CardTitle>
+                <CardTitle className="text-sm font-bold text-slate-700">Flujo Temporal</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 {kpiLoading ? <Skeleton className="h-64" /> : (
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={kpiData?.accesos_por_hora || kpiData?.accesos_por_dia || []}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey={kpiData?.accesos_por_hora ? "hora" : "hora"} fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
+                      <XAxis dataKey="hora" fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
                       <YAxis fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
                       <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                      <Bar dataKey="cantidad" fill="#191919ff" radius={[4, 4, 0, 0]} barSize={24} />
+                      <Bar dataKey="cantidad" fill="#1e293b" radius={[4, 4, 0, 0]} barSize={24} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle>Top Aulas</CardTitle></CardHeader>
-              <CardContent>
+            <Card className="border-none shadow-sm overflow-hidden bg-white">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold text-slate-700">Accesos por Método</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {kpiLoading ? <Skeleton className="h-64" /> : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={kpiData?.accesos_por_metodo || []}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="metodo" fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} tickFormatter={metodLabel} />
+                      <YAxis fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
+                      <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                      <Bar dataKey="cantidad" fill="#1e293b" radius={[4, 4, 0, 0]} barSize={32} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm overflow-hidden bg-white">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold text-slate-700">Top Aulas (Accesos)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
                 {kpiLoading ? <Skeleton className="h-64" /> : (
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={kpiData?.top_aulas || []} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                       <XAxis type="number" hide />
-                      <YAxis dataKey="aula" type="category" width={80} fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis dataKey="aula" type="category" width={80} fontSize={10} tickLine={false} axisLine={false} tick={{fill: '#94a3b8'}} />
                       <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                      <Bar dataKey="cantidad" fill="#191919ff" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="cantidad" fill="#1e293b" radius={[0, 4, 4, 0]} />
                     </BarChart> 
                   </ResponsiveContainer>
                 )}

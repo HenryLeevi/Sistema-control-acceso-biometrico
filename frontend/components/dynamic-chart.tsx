@@ -95,6 +95,26 @@ export function DynamicChart({ type, data, onRemove, primaryColor = '#3b82f6', s
       scalarLabel = 'Promedio (segundos)';
       chartData = [{ name: title, value: scalarValue, fill: '#64748b' }];
       break;
+
+    case 'accesos_por_metodo':
+      allowedViews = ['bar', 'pie', 'kpi'];
+      defaultView = 'bar';
+      title = 'Accesos por Método';
+      chartData = (data?.accesos_por_metodo || []).map((d: any, idx: number) => ({
+        name: d.metodo,
+        value: d.cantidad,
+        fill: COLORS[idx % COLORS.length]
+      }));
+      // For KPI view of this category, show the top method
+      if (chartData.length > 0) {
+        const top = [...chartData].sort((a, b) => b.value - a.value)[0];
+        scalarValue = top.value;
+        scalarLabel = `Top: ${top.name}`;
+      } else {
+        scalarValue = 0;
+        scalarLabel = 'Sin datos';
+      }
+      break;
   }
 
   const [viewType, setViewType] = useState<'bar' | 'line' | 'pie' | 'kpi'>(defaultView);

@@ -9,7 +9,7 @@ import { useUpsertCalendarEvent, useDeletePermission } from '@/lib/api-hooks';
 import { AccessPermission, Aula, User } from '@/lib/types';
 import { format, addMinutes, startOfDay, parse, addWeeks, subWeeks, startOfWeek, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Pencil, GripVertical, MoreVertical, Clock, MapPin, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Pencil, GripVertical, MoreVertical, Clock, MapPin, User as UserIcon, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -18,9 +18,10 @@ const ROW_HEIGHT = 25; // 30 mins = 25px, 1 hour = 50px
 
 interface WeeklyCalendarProps {
   permissions: AccessPermission[];
+  readOnly?: boolean;
 }
 
-export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
   const [now, setNow] = useState(new Date());
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selection, setSelection] = useState<{ day: number; start: number; end: number } | null>(null);
@@ -81,7 +82,7 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
   }, [isSelecting, selection, hasMoved, draggingEvent, permissions, upsertEvent]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!dragStart || !gridRef.current) return;
+    if (readOnly || !dragStart || !gridRef.current) return;
     
     const rect = gridRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -123,6 +124,7 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
   };
 
   const handleMouseDown = (e: React.MouseEvent, day: number, hour: number) => {
+    if (readOnly) return;
     if (e.button === 0) {
       // Left Click (0) for selection
       setDragButton(0);
@@ -141,6 +143,7 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
 
   const startDraggingEvent = (e: React.MouseEvent, p: AccessPermission, type: 'move' | 'resize') => {
     // Left Click (0) for Select & potentially Drag
+    if (readOnly && type !== 'move') return; // Allow select via move handler's click logic if needed, but let's be stricter
     if (e.button !== 0) return;
     
     e.stopPropagation();
@@ -149,6 +152,8 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
     // Select the event regardless of move/resize
     setSelectedEventId(p.id);
     setSelection(null); // Clear range selection when selecting an event
+
+    if (readOnly) return;
 
     const [startH, startM = 0] = (p.schedule_start || '00:00').split(':').map(Number);
     const [endH, endM = 0] = (p.schedule_end || '01:00').split(':').map(Number);
@@ -384,6 +389,12 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
         </div>
       </div>
 
+      {/* Mobile scroll hint */}
+      <div className="lg:hidden flex items-center justify-center gap-2 py-2 px-4 bg-indigo-50 border-b border-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider">
+        <RefreshCw className="h-3 w-3 animate-spin-slow rotate-90" />
+        Desliza horizontalmente para ver la semana completa
+      </div>
+
       <div className="flex-1 overflow-x-auto overflow-y-hidden flex flex-col">
         <div className="flex-1 min-w-[1100px] flex flex-col h-full">
           {/* Header */}
@@ -429,7 +440,7 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
           e.preventDefault();
           
           // Use the selection if it exists, otherwise use the selected event
-          if (selection) {
+          if (selection && !readOnly) {
             const formatTime = (v: number) => {
               const h = Math.min(Math.floor(v), 23);
               const m = v >= 24 ? '59' : ((v % 1) >= 0.5 ? '30' : '00');
@@ -491,7 +502,7 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
                   key={i} 
                   className={cn(
                     "border-b border-slate-100/30 w-full h-full transition-colors cursor-pointer",
-                    "hover:bg-blue-50/30",
+                    !readOnly && "hover:bg-blue-50/30",
                     i % 2 === 1 ? "border-b-slate-200/50" : "border-b-dashed border-b-slate-100"
                   )}
                   onMouseDown={(e) => handleMouseDown(e, dayIndex, i / 2)}
@@ -604,10 +615,12 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
                         </div>
                       </div>
                       {/* Resize handle (bottom) */}
-                      <div 
-                        className="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize hover:bg-white/30 transition-colors z-30" 
-                        onMouseDown={(e) => startDraggingEvent(e, p, 'resize')}
-                      />
+                      {!readOnly && (
+                        <div 
+                          className="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize hover:bg-white/30 transition-colors z-30" 
+                          onMouseDown={(e) => startDraggingEvent(e, p, 'resize')}
+                        />
+                      )}
                     </div>
                   );
                 });
@@ -646,6 +659,7 @@ export function WeeklyCalendar({ permissions }: WeeklyCalendarProps) {
     initialData={editingEvent}
     onSave={handleSave}
     onDelete={handleDelete}
+    readOnly={readOnly}
   />
 </div>
   );

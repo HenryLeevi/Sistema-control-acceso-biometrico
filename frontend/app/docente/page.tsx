@@ -11,24 +11,9 @@ import { CalendarDays, Clock, MapPin, QrCode, RefreshCw, CheckCircle, AlertCircl
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { DocenteTutorial } from '@/components/docente-tutorial';
+import { WeeklyCalendar } from '@/components/weekly-calendar';
+import { AccessPermission } from '@/lib/types';
 
-const DIAS = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const DIAS_CORTO = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-const AULA_COLORS = [
-  { bg: 'bg-blue-50', border: 'border-l-blue-500', badge: 'bg-blue-100 text-blue-800', dot: 'bg-blue-500' },
-  { bg: 'bg-purple-50', border: 'border-l-purple-500', badge: 'bg-purple-100 text-purple-800', dot: 'bg-purple-500' },
-  { bg: 'bg-emerald-50', border: 'border-l-emerald-500', badge: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500' },
-  { bg: 'bg-amber-50', border: 'border-l-amber-500', badge: 'bg-amber-100 text-amber-800', dot: 'bg-amber-500' },
-  { bg: 'bg-rose-50', border: 'border-l-rose-500', badge: 'bg-rose-100 text-rose-800', dot: 'bg-rose-500' },
-  { bg: 'bg-cyan-50', border: 'border-l-cyan-500', badge: 'bg-cyan-100 text-cyan-800', dot: 'bg-cyan-500' },
-];
-
-function horaToMin(h: string | null) {
-  if (!h) return 0;
-  const [hr, mn] = h.split(':').map(Number);
-  return hr * 60 + mn;
-}
 
 export default function DocenteDashboard() {
   const { user } = useAuth();
@@ -73,24 +58,6 @@ export default function DocenteDashboard() {
     return `${m}:${String(sec).padStart(2, '0')}`;
   };
 
-  // Build schedule entries
-  const clases = permisos.map((p, idx) => {
-    const horario = horarios.find(h => h.id === p.schedule);
-    if (!horario || !p.is_active) return null;
-    const color = AULA_COLORS[idx % AULA_COLORS.length];
-    return { horario, aula: p.aula, color };
-  }).filter(Boolean) as { horario: any; aula: any; color: typeof AULA_COLORS[0] }[];
-
-  // Group by day
-  const clasesPorDia: Record<number, typeof clases> = {};
-  clases.forEach(c => {
-    const dia = c.horario.day_of_week;
-    if (!clasesPorDia[dia]) clasesPorDia[dia] = [];
-    clasesPorDia[dia].push(c);
-  });
-
-  const todayDia = new Date().getDay() === 0 ? 7 : new Date().getDay();
-  const clasesHoy = [...(clasesPorDia[todayDia] || []), ...clases.filter(c => c.horario.is_anytime)];
 
   const progressPct = otpExpira ? (tiempoRestante / 600) * 100 : 0;
   const progressColor = tiempoRestante > 300 ? 'bg-green-500' : tiempoRestante > 60 ? 'bg-amber-500' : 'bg-red-500';
@@ -102,135 +69,49 @@ export default function DocenteDashboard() {
         <div className="space-y-6">
 
           {/* Header */}
-          <div data-tour="user-profile" className="flex items-start justify-between">
+          <div data-tour="user-profile" className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                 Bienvenido, {user?.nombre} 👋
               </h1>
-              <p className="text-slate-500 mt-1">
+              <p className="text-slate-500 mt-1 text-sm sm:text-base">
                 {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
-            <Badge variant="secondary" className="text-sm px-3 py-1">Docente</Badge>
+            <Badge variant="secondary" className="text-sm px-3 py-1 w-fit">Docente</Badge>
           </div>
 
           {/* Main grid */}
           <div className="grid gap-6 lg:grid-cols-3">
 
             {/* ===== Schedule Column (2/3) ===== */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6 min-w-0">
 
-              {/* Today's classes */}
-              <Card data-tour="today-summary">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
+
+              {/* Weekly schedule */}
+              <Card data-tour="weekly-schedule" className="overflow-hidden border-slate-200 shadow-sm">
+                <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <CalendarDays className="h-5 w-5 text-slate-600" />
-                      <CardTitle className="text-lg">
-                        Hoy — {DIAS[todayDia]}
-                      </CardTitle>
+                      <Clock className="h-5 w-5 text-indigo-600" />
+                      <CardTitle className="text-lg font-bold">Horario Semanal</CardTitle>
                     </div>
-                    <Badge variant={clasesHoy.length > 0 ? 'default' : 'outline'}>
-                      {clasesHoy.length} clase{clasesHoy.length !== 1 ? 's' : ''}
+                    <Badge variant="outline" className="bg-white text-slate-500 border-slate-200 w-fit">
+                      Solo lectura
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {clasesHoy.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400">
-                      <CalendarDays className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                      <p>No tienes clases asignadas hoy</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {[...clasesHoy].sort((a, b) => horaToMin(a.horario.start_time) - horaToMin(b.horario.start_time)).map((c, i) => (
-                        <div key={i} className={`flex items-center gap-4 p-4 rounded-xl border-l-4 ${c.color.bg} ${c.color.border} border border-l-4`}>
-                          <div className="text-center min-w-[64px]">
-                            {c.horario.is_anytime ? (
-                              <p className="text-[10px] font-bold text-slate-900 uppercase leading-none">Acceso<br/>Total</p>
-                            ) : (
-                              <>
-                                <p className="text-xs font-mono font-bold text-slate-700">{(c.horario.start_time || '').slice(0, 5)}</p>
-                                <p className="text-[10px] text-slate-400 font-mono">{(c.horario.end_time || '').slice(0, 5)}</p>
-                              </>
-                            )}
-                          </div>
-                          <div className="h-10 w-px bg-slate-200 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-slate-900 truncate">
-                              {c.aula?.description || `Aula ${c.aula?.code}`}
-                            </p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <MapPin className="h-3 w-3 text-slate-400" />
-                              <span className="text-xs text-slate-500">{c.aula?.code}</span>
-                            </div>
-                          </div>
-                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${c.color.badge}`}>
-                            {c.horario.is_anytime ? 'Permanente' : (DIAS_CORTO[c.horario.day_of_week] || '')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Weekly schedule */}
-              <Card data-tour="weekly-schedule">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-slate-600" />
-                    <CardTitle className="text-lg">Horario Semanal</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-5 gap-2">
-                    {[1, 2, 3, 4, 5].map(dia => {
-                      const clasesDelDia = (clasesPorDia[dia] || []).sort(
-                        (a, b) => horaToMin(a.horario.start_time) - horaToMin(b.horario.start_time)
-                      );
-                      const isToday = dia === todayDia;
-                      return (
-                        <div key={dia} className={`rounded-xl overflow-hidden border ${isToday ? 'border-blue-300 shadow-sm shadow-blue-100' : 'border-slate-200'}`}>
-                          {/* Day header */}
-                          <div className={`py-2 text-center text-xs font-bold uppercase tracking-wide ${isToday ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                            {DIAS_CORTO[dia]}
-                          </div>
-                          {/* Classes */}
-                          <div className="p-1.5 space-y-1.5 min-h-[80px]">
-                            {clasesDelDia.length === 0 ? (
-                              <div className="h-10 flex items-center justify-center">
-                                <span className="text-[10px] text-slate-300">—</span>
-                              </div>
-                            ) : (
-                              clasesDelDia.map((c, i) => (
-                                <div key={i} className={`rounded-lg p-1.5 border ${c.color.bg} ${c.color.border.replace('border-l-', 'border-')}`}>
-                                  <p className="text-[10px] font-bold text-slate-700 leading-tight">{c.aula?.code}</p>
-                                  <p className="text-[9px] text-slate-500 font-mono leading-tight">{(c.horario.start_time || '').slice(0, 5)}</p>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Legend */}
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-                    {clases.map((c, i) => (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <div className={`h-2 w-2 rounded-full ${c.color.dot}`} />
-                        <span className="text-xs text-slate-500">{c.aula?.code} — {c.aula?.description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
+                <div className="h-[400px] sm:h-[600px] overflow-hidden">
+                  <WeeklyCalendar 
+                    permissions={permisos as AccessPermission[]} 
+                    readOnly={true} 
+                  />
+                </div>
               </Card>
             </div>
 
-            {/* ===== OTP Column (1/3) ===== */}
-            <div className="space-y-4">
+            {/* ===== OTP Column (1/3) ===== - Shown first on mobile */}
+            <div className="space-y-4 min-w-0">
               <Card data-tour="otp-section" className="border-slate-200">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">

@@ -280,13 +280,51 @@ class AccessEventViewSet(
                 event.timestamp,
                 event.user_nombre or 'Anónimo',
                 event.user_email or 'N/A',
-                event.aula.code,
+                event.aula.code if event.aula else 'N/A',
                 event.method,
                 event.result,
                 'SÍ' if event.alert_flag else 'NO',
                 event.reason or ''
             ])
         
+        return response
+
+    @action(detail=False, methods=["get"])
+    def export_excel(self, request):
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill
+        
+        queryset = self.filter_queryset(self.get_queryset())
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Reporte de Accesos"
+        
+        headers = ['ID', 'Fecha', 'Usuario', 'Email', 'Aula', 'Método', 'Resultado', 'Alerta', 'Razón']
+        ws.append(headers)
+        
+        # Style headers
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="1e293b", end_color="1e293b", fill_type="solid")
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            
+        for event in queryset:
+            ws.append([
+                str(event.id),
+                event.timestamp.replace(tzinfo=None) if event.timestamp else '',
+                event.user_nombre or 'Anónimo',
+                event.user_email or 'N/A',
+                event.aula.code if event.aula else 'N/A',
+                event.method,
+                event.result,
+                'SÍ' if event.alert_flag else 'NO',
+                event.reason or ''
+            ])
+            
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="reporte_accesos.xlsx"'
+        wb.save(response)
         return response
 
 
@@ -446,6 +484,13 @@ class KPIView(APIView):
             .order_by("-cantidad")[:5]
         )
 
+        por_metodo = (
+            events_curr
+            .values("method")
+            .annotate(cantidad=Count("id"))
+            .order_by("-cantidad")
+        )
+
         total = curr_stats["total"] or 0
         prev_total = prev_stats["total"] or 0
         success = curr_stats["success"] or 0
@@ -476,6 +521,10 @@ class KPIView(APIView):
             "top_aulas": [
                 {"aula": item["aula__code"] or "N/A", "cantidad": item["cantidad"]}
                 for item in top_aulas
+            ],
+            "accesos_por_metodo": [
+                {"metodo": item["method"], "cantidad": item["cantidad"]}
+                for item in por_metodo
             ],
             "start_date": str(start_date),
             "end_date": str(end_date),

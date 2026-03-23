@@ -31,10 +31,13 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=128, required=False, write_only=True,
         help_text="Password for login."
     )
+    pin = serializers.CharField(
+        max_length=10, required=False, write_only=True,
+        help_text="Optional PIN for biometric fallback."
+    )
     roles = serializers.SerializerMethodField()
+    is_enrolled = serializers.SerializerMethodField()
 
-    def get_roles(self, obj):
-        return [ur.role.name for ur in obj.user_roles.all()]
 
     class Meta:
         model = User
@@ -49,12 +52,10 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "created_at",
             "roles",
-            # write-only auth fields
+            "is_enrolled",
             "username",
             "password",
             "pin",
-            "is_enrolled",
-            "roles",
         ]
         read_only_fields = ["id", "created_at", "roles"]
         extra_kwargs = {
