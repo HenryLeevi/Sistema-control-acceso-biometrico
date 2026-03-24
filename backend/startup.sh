@@ -5,6 +5,10 @@
 # 1. Instalar dependencias si es necesario (Oryx ya lo hace, pero por seguridad)
 # pip install -r requirements.txt
 
-# 2. Iniciar Daphne en el puerto 8000 (puerto interno por defecto de Azure Linux)
-echo "Iniciando Daphne en el puerto 8000..."
-daphne -b 0.0.0.0 -p 8000 config.asgi:application
+# 2. Iniciar Daphne en el puerto 8000
+echo "CONTENIDO DE WWWROOT:"
+ls -R /home/site/wwwroot/
+
+echo "Iniciando Daphne en el puerto 8000 (ASGI)..."
+# Usamos el path completo para evitar ambigüedades
+/tmp/8de*/antenv/bin/daphne -b 0.0.0.0 -p 8000 config.asgi:application || daphne -b 0.0.0.0 -p 8000 config.asgi:application
