@@ -34,13 +34,14 @@ else:
     else:
         ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     
-    # Soporte para IPs dinámicas de Azure (health checks y puentes)
-    # Permite el rango link-local 169.254.x.x completo
-    ALLOWED_HOSTS.append(".azurewebsites.net")
-    ALLOWED_HOSTS.append("169.254.128.0/17") # Rango común de Azure Bridge
-    # Wildcard para IPs internas si es necesario
+    # Soporte para Azure (Health checks y Proxies internos)
     if os.environ.get("WEBSITE_HOSTNAME"):
         ALLOWED_HOSTS.append(os.environ.get("WEBSITE_HOSTNAME"))
+        ALLOWED_HOSTS.append(".azurewebsites.net")
+    
+    # Agregar las IPs internas del puente de Azure (vistas en logs)
+    # Django no soporta CIDR en ALLOWED_HOSTS por defecto
+    ALLOWED_HOSTS.extend(['169.254.131.1', '169.254.131.2', '169.254.131.3', '169.254.131.4', '169.254.131.5'])
 
 CSRF_TRUSTED_ORIGINS = [o.strip().rstrip('/') for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
