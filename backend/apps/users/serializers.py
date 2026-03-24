@@ -135,12 +135,15 @@ class UserSerializer(serializers.ModelSerializer):
             from datetime import timedelta
             from django.contrib.auth.hashers import make_password
             
+            from .utils import compute_pin_index
+            
             # Deactivate old pins if any
             PinContingency.objects.filter(user=user, is_active=True).update(is_active=False)
             
             PinContingency.objects.create(
                 user=user,
                 pin_hash=make_password(pin),
+                pin_index=compute_pin_index(pin),
                 is_active=True,
                 expires_at=timezone.now() + timedelta(days=365) # 1 year by default
             )
@@ -192,12 +195,15 @@ class UserSerializer(serializers.ModelSerializer):
             from datetime import timedelta
             from django.contrib.auth.hashers import make_password
             
+            from .utils import compute_pin_index
+            
             # Deactivate old pins
             PinContingency.objects.filter(user=instance, is_active=True).update(is_active=False)
             
             PinContingency.objects.create(
                 user=instance,
                 pin_hash=make_password(pin),
+                pin_index=compute_pin_index(pin),
                 is_active=True,
                 expires_at=timezone.now() + timedelta(days=365)
             )
@@ -261,6 +267,9 @@ class PinContingencySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         from django.contrib.auth.hashers import make_password
+        from .utils import compute_pin_index
         # Hash the PIN before storing it
-        validated_data["pin_hash"] = make_password(validated_data["pin_hash"])
+        pin_raw = validated_data["pin_hash"]
+        validated_data["pin_hash"] = make_password(pin_raw)
+        validated_data["pin_index"] = compute_pin_index(pin_raw)
         return super().create(validated_data)

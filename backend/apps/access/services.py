@@ -121,28 +121,43 @@ class AccessService:
                     alert_flag = True
                     
             elif payload.method == AccessMethod.PIN:
-                # payload.data contains the plain text PIN
+                # Optimized O(1) Lookup via pin_index (fast hash)
+                from apps.users.utils import compute_pin_index
                 now = timezone.now()
-                active_pins = PinContingency.objects.filter(is_active=True, expires_at__gt=now).select_related("user")
-                logger.info(f"PIN Validation: Found {active_pins.count()} active PINs to check.")
+                idx = compute_pin_index(payload.data)
                 
-                for pin_record in active_pins:
-                    match = False
-                    try:
-                        # 1. Try secure Django hashing
-                        match = check_password(payload.data, pin_record.pin_hash)
-                        logger.debug(f"PIN Match check for user {pin_record.user.email}: {match}")
-                    except Exception as e:
-                        # 2. Fallback to plain text comparison for legacy/unhashed PINs
-                        logger.warning(f"check_password failed for user {pin_record.user.email}, falling back to plain text check: {e}")
-                        match = (payload.data == pin_record.pin_hash)
-                    
-                    if match:
+                pin_record = PinContingency.objects.filter(
+                    pin_index=idx, 
+                    is_active=True, 
+                    expires_at__gt=now
+                ).select_related("user").first()
+                
+                if pin_record:
+                    # Final security verification using Django's slow check
+                    if check_password(payload.data, pin_record.pin_hash):
                         user = pin_record.user
-                        logger.info(f"PIN Validation Successful for user: {user.email}")
-                        break
-                        
-                if not user:
+                        logger.info(f"PIN Validation Successful (O(1)) for user: {user.email}")
+                    else:
+                        logger.warning(f"Fast index matched but PBKDF2 failed for user {pin_record.user.email}.")
+                        reason = "Error de integridad de seguridad en el PIN."
+                else:
+                    # FALLBACK: Search legacy PINs (where pin_index is NULL)
+                    # This is the "slow" path (15s delay) but ensures existing users aren't locked out.
+                    legacy_pins = PinContingency.objects.filter(
+                        is_active=True, 
+                        expires_at__gt=now,
+                        pin_index__isnull=True
+                    ).select_related("user")
+                    
+                    if legacy_pins.exists():
+                        logger.info(f"PIN Index not found. Searching {legacy_pins.count()} legacy PINs (Slow Path)...")
+                        for legacy_rec in legacy_pins:
+                            if check_password(payload.data, legacy_rec.pin_hash):
+                                user = legacy_rec.user
+                                logger.info(f"PIN Validation Successful (Slow Legacy Path) for user: {user.email}")
+                                break
+                
+                if not user and not reason:
                     reason = "PIN inválido o expirado."
 
             elif payload.method == AccessMethod.OTP:

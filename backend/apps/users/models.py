@@ -80,6 +80,7 @@ class PinContingency(models.Model):
         related_name="pin_contingencies",
     )
     pin_hash = models.CharField(max_length=255)
+    pin_index = models.CharField(max_length=64, db_index=True, blank=True, null=True, help_text="Fast lookup hash (SHA256)")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
