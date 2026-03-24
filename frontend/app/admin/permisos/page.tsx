@@ -142,8 +142,11 @@ export default function PermisosPage() {
     {
       header: 'Acciones',
       accessor: (row: AccessPermission) => (
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500 transition-colors" onClick={() => setItemToDelete(row)}>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 transition-colors" onClick={() => openEdit(row)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 transition-colors" onClick={() => setItemToDelete(row)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -155,6 +158,16 @@ export default function PermisosPage() {
     <RoleGuard allowedRoles={['ADMIN', 'SUBADMIN']}>
       <AdminLayout>
         <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Permisos de Acceso</h1>
+              <p className="text-slate-600 mt-1">Vinculación de usuarios con aulas y horarios</p>
+            </div>
+            <Button onClick={openCreate} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" /> Nuevo Permiso
+            </Button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card className="p-4 border-slate-200 bg-white shadow-sm">
               <div className="flex items-center gap-3">
