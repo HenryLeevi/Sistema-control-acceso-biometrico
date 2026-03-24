@@ -30,13 +30,17 @@ if DEBUG:
 else:
     _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
     if _allowed_hosts_raw:
-        ALLOWED_HOSTS = _allowed_hosts_raw.split(",")
-        # Azure internal health check IP (link-local)
-        if "169.254.131.2" not in ALLOWED_HOSTS:
-            ALLOWED_HOSTS.append("169.254.131.2")
+        ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_raw.split(",") if h.strip()]
     else:
-        # Default fallback
         ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    
+    # Soporte para IPs dinámicas de Azure (health checks y puentes)
+    # Permite el rango link-local 169.254.x.x completo
+    ALLOWED_HOSTS.append(".azurewebsites.net")
+    ALLOWED_HOSTS.append("169.254.128.0/17") # Rango común de Azure Bridge
+    # Wildcard para IPs internas si es necesario
+    if os.environ.get("WEBSITE_HOSTNAME"):
+        ALLOWED_HOSTS.append(os.environ.get("WEBSITE_HOSTNAME"))
 
 CSRF_TRUSTED_ORIGINS = [o.strip().rstrip('/') for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
