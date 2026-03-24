@@ -46,7 +46,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
   }, []);
 
   useEffect(() => {
-    const handleGlobalMouseUp = (e: MouseEvent) => {
+    const handleGlobalEnd = () => {
       if (draggingEvent && selection && hasMoved) {
         // Find the event to update
         const p = permissions.find(x => x.id === draggingEvent.id);
@@ -66,9 +66,6 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
             is_anytime: false,
           });
         }
-      } else if (isSelecting && !draggingEvent && !hasMoved) {
-        // Just clicked on empty space - maybe clear selection or keep it?
-        // Let's keep the single cell selection for right-click creation.
       }
       setIsSelecting(false);
       setHasMoved(false);
@@ -77,16 +74,19 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
       setDraggingEvent(null);
     };
 
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('mouseup', handleGlobalEnd);
+    window.addEventListener('touchend', handleGlobalEnd);
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalEnd);
+      window.removeEventListener('touchend', handleGlobalEnd);
+    };
   }, [isSelecting, selection, hasMoved, draggingEvent, permissions, upsertEvent]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (readOnly || !dragStart || !gridRef.current) return;
-    
+  const getGridPosition = (clientX: number, clientY: number) => {
+    if (!gridRef.current) return null;
     const rect = gridRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top + gridRef.current.scrollTop;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top + gridRef.current.scrollTop;
     
     // Day calculation - More robust relative to grid
     const colWidth = rect.width / 8;
@@ -98,7 +98,12 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
     const halfHours = Math.floor(y / 25);
     const timeVal = halfHours / 2;
     const clampedTime = Math.max(0, Math.min(23.5, timeVal));
+    
+    return { day: clampedDay, hour: clampedTime };
+  };
 
+  const updateSelection = (clampedDay: number, clampedTime: number) => {
+    if (!dragStart) return;
     setHasMoved(true);
     setIsSelecting(true);
 
@@ -123,6 +128,21 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
     }
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (readOnly || !dragStart) return;
+    const pos = getGridPosition(e.clientX, e.clientY);
+    if (pos) updateSelection(pos.day, pos.hour);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (readOnly || !dragStart) return;
+    // Prevent scrolling while dragging
+    if (e.cancelable) e.preventDefault();
+    const touch = e.touches[0];
+    const pos = getGridPosition(touch.clientX, touch.clientY);
+    if (pos) updateSelection(pos.day, pos.hour);
+  };
+
   const handleMouseDown = (e: React.MouseEvent, day: number, hour: number) => {
     if (readOnly) return;
     if (e.button === 0) {
@@ -139,6 +159,42 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
         setSelection({ day, start: hour, end: hour + 1 });
       }
     }
+  };
+
+  const handleTouchStart = (day: number, hour: number) => {
+    if (readOnly) return;
+    setDragButton(0);
+    setDragStart({ day, hour });
+    setSelection({ day, start: hour, end: hour + 0.5 });
+    setSelectedEventId(null);
+  };
+
+  const handleTouchStartEvent = (e: React.TouchEvent, p: AccessPermission, type: 'move' | 'resize') => {
+    if (readOnly && type !== 'move') return;
+    
+    // Select the event
+    setSelectedEventId(p.id);
+    setSelection(null);
+
+    if (readOnly) return;
+
+    const [startH, startM = 0] = (p.schedule_start || '00:00').split(':').map(Number);
+    const [endH, endM = 0] = (p.schedule_end || '01:00').split(':').map(Number);
+    const startVal = startH + (startM >= 30 ? 0.5 : 0);
+    const endVal = endH + (endM >= 30 ? 0.5 : 0);
+    
+    setDragButton(0);
+    setDraggingEvent({
+      id: p.id,
+      originalDay: p.schedule_day ?? 0,
+      originalStart: startVal,
+      originalEnd: endVal,
+      type
+    });
+    setDragStart({ day: p.schedule_day ?? 0, hour: type === 'move' ? startVal : endVal - 0.5 });
+    setSelection({ day: p.schedule_day ?? 0, start: startVal, end: endVal });
+    setHasMoved(false);
+    setIsSelecting(true);
   };
 
   const startDraggingEvent = (e: React.MouseEvent, p: AccessPermission, type: 'move' | 'resize') => {
@@ -384,8 +440,9 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
           </div>
         </div>
         
-        <div className="text-sm font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-          {format(weekDates[0], 'd MMM')} - {format(weekDates[6], 'd MMM, yyyy', { locale: es })}
+        <div className="text-[10px] sm:text-sm font-medium text-slate-500 bg-slate-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-slate-100 flex items-center gap-1">
+          <span className="lg:hidden">{format(weekDates[0], 'd/M')} - {format(weekDates[6], 'd/M')}</span>
+          <span className="hidden lg:inline">{format(weekDates[0], 'd MMM')} - {format(weekDates[6], 'd MMM, yyyy', { locale: es })}</span>
         </div>
       </div>
 
@@ -436,6 +493,33 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
           gridTemplateColumns: '80px repeat(7, 1fr)',
         }}
         onMouseMove={handleMouseMove}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => {
+          // Trigger the same logic as global mouse up
+          if (draggingEvent && selection && hasMoved) {
+            const p = permissions.find(x => x.id === draggingEvent.id);
+            if (p) {
+              const formatTime = (v: number) => {
+                const h = Math.min(Math.floor(v), 23);
+                const m = v >= 24 ? '59' : ((v % 1) >= 0.5 ? '30' : '00');
+                return `${String(h).padStart(2, '0')}:${m}:00`;
+              };
+              upsertEvent({
+                id: p.id,
+                user: p.user,
+                aula: p.aula,
+                day_of_week: selection.day,
+                start_time: formatTime(selection.start),
+                end_time: formatTime(selection.end),
+                is_anytime: false,
+              });
+            }
+          }
+          setIsSelecting(false);
+          setHasMoved(false);
+          setDragStart(null);
+          setDraggingEvent(null);
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           
@@ -506,6 +590,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
                     i % 2 === 1 ? "border-b-slate-200/50" : "border-b-dashed border-b-slate-100"
                   )}
                   onMouseDown={(e) => handleMouseDown(e, dayIndex, i / 2)}
+                  onTouchStart={() => handleTouchStart(dayIndex, i / 2)}
                   onDragStart={(e) => e.preventDefault()}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -553,8 +638,10 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
                         borderColor: stringToColor(p.user_email || p.user || 'anon').border,
                         color: stringToColor(p.user_email || p.user || 'anon').text,
                         minHeight: '24px',
+                        touchAction: 'none' // Prevent scrolling when touching an event
                       }}
                       onMouseDown={(e) => startDraggingEvent(e, p, 'move')}
+                      onTouchStart={(e) => handleTouchStartEvent(e, p, 'move')}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         setEditingEvent({
@@ -617,8 +704,24 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
                       {/* Resize handle (bottom) */}
                       {!readOnly && (
                         <div 
-                          className="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize hover:bg-white/30 transition-colors z-30" 
+                          className="absolute bottom-0 inset-x-0 h-4 cursor-ns-resize hover:bg-white/30 transition-colors z-30" 
                           onMouseDown={(e) => startDraggingEvent(e, p, 'resize')}
+                          onTouchStart={(e) => {
+                            // Touch mapping for resize
+                            const [startH, startM = 0] = (p.schedule_start || '00:00').split(':').map(Number);
+                            const [endH, endM = 0] = (p.schedule_end || '01:00').split(':').map(Number);
+                            const startVal = startH + (startM >= 30 ? 0.5 : 0);
+                            const endVal = endH + (endM >= 30 ? 0.5 : 0);
+                            setDragStart({ day: p.schedule_day ?? 0, hour: endVal - 0.5 });
+                            setDraggingEvent({
+                              id: p.id,
+                              originalDay: p.schedule_day ?? 0,
+                              originalStart: startVal,
+                              originalEnd: endVal,
+                              type: 'resize'
+                            });
+                            setIsSelecting(true);
+                          }}
                         />
                       )}
                     </div>

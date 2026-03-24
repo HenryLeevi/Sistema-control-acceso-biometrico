@@ -495,7 +495,7 @@ export default function SubAdminPage() {
               </TabsList>
             </div>
             <TabsContent value="dashboard" className="space-y-6 pt-2">
-              <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5"><KPICard title="Accesos Hoy" value={kpiData?.total_accesos || 0} icon={Activity} /><KPICard title="Tasa Éxito" value={`${kpiData?.tasa_exito || 0}%`} icon={CheckCircle} className="text-emerald-600" /><KPICard title="Tasa Rechazo" value={`${kpiData?.tasa_rechazo || 0}%`} icon={XCircle} className="text-red-600" /><KPICard title="Alertas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} className={kpiData?.alertas_activas ? 'animate-pulse text-amber-500' : ''} /><KPICard title="Usuarios" value={kpiData?.usuarios_activos || 0} icon={Users} /></div>
+              <div className="grid gap-1 sm:gap-4 grid-cols-4 lg:grid-cols-5"><KPICard title="Accesos Hoy" value={kpiData?.total_accesos || 0} icon={Activity} /><KPICard title="Tasa Éxito" value={`${kpiData?.tasa_exito || 0}%`} icon={CheckCircle} className="text-emerald-600" /><KPICard title="Tasa Rechazo" value={`${kpiData?.tasa_rechazo || 0}%`} icon={XCircle} className="text-red-600" /><KPICard title="Alertas" value={kpiData?.alertas_activas || 0} icon={AlertTriangle} className={kpiData?.alertas_activas ? 'animate-pulse text-amber-500' : ''} /><KPICard title="Usuarios" value={kpiData?.usuarios_activos || 0} icon={Users} /></div>
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card><CardHeader><CardTitle className="text-lg">Flujo Horario</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={250}><BarChart data={kpiData?.accesos_por_hora || kpiData?.accesos_por_dia || []}><XAxis dataKey="hora" /><YAxis /><Tooltip /><Bar dataKey="cantidad" fill="#0f172a" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
                 <Card><CardHeader><CardTitle className="text-lg">Accesos por Método</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={250}><BarChart data={kpiData?.accesos_por_metodo || []}><XAxis dataKey="metodo" /><YAxis /><Tooltip /><Bar dataKey="cantidad" fill="#0f172a" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
@@ -621,7 +621,7 @@ export default function SubAdminPage() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-1 sm:gap-4 grid-cols-4">
                 <KPICard title="Total Registros" value={reporteData?.total_accesos || 0} icon={FileText} />
                 <KPICard title="Accesos Exitosos" value={reporteData?.accesos_permitidos || 0} icon={CheckCircle} className="text-emerald-600" />
                 <KPICard title="Accesos Denegados" value={reporteData?.accesos_denegados || 0} icon={XCircle} className="text-red-500" />

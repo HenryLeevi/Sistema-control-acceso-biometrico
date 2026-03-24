@@ -302,11 +302,11 @@ function AdminDashboard() {
       ) : (
         <>
           {kpiLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+            <div className="grid gap-1 sm:gap-4 grid-cols-4">
+              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-16 lg:h-32" />)}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-1 sm:gap-4 grid-cols-4">
               <KPICard title="Accesos Totales" value={kpiData?.total_accesos || 0} icon={Activity} description="En el periodo seleccionado" trend={kpiData?.total_accesos_trend} />
               <KPICard title="Tasa Éxito" value={`${kpiData?.tasa_exito || 0}%`} icon={CheckCircle} description="Permitidos" trend={kpiData?.tasa_exito_trend} />
               <KPICard title="Tasa Rechazo" value={`${kpiData?.tasa_rechazo || 0}%`} icon={XCircle} description="Denegados" trend={kpiData?.tasa_rechazo_trend} />
@@ -436,7 +436,7 @@ function SeguridadDashboard() {
         <p className="text-slate-600 mt-1">Monitoreo de accesos en tiempo real</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-1 sm:gap-4 grid-cols-4">
         <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex items-center gap-4 shadow-sm">
           <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
             <ShieldAlert className="h-6 w-6 text-red-600" />
