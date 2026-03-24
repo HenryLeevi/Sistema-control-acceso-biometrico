@@ -81,7 +81,7 @@ class AccessService:
         from apps.users.models import User, PinContingency
         from apps.biometric.models import Biometric
         from apps.access.models import Aula, AccessPermission, AccessEvent, Schedule
-        from apps.biometric.services.azure_face import identify_face
+        from apps.biometric.services.aws_rekognition import search_face_by_image
         import time
         start_time = time.time()
         
@@ -99,34 +99,27 @@ class AccessService:
             # 1. Identify User
             if payload.method == AccessMethod.FACE:
                 try:
-                    # Identify face using Azure Face API
-                    # The payload.data is expected to be a base64 encoded image or a stream
+                    # Identify face using AWS Rekognition
                     import base64
                     image_data = base64.b64decode(payload.data)
-                    image_stream = io.BytesIO(image_data)
                     
-                    person_id = identify_face(image_stream)
+                    matched_user_id, confidence = search_face_by_image(image_data)
                     
-                    if person_id:
-                        # Find the biometric record that has this person_id (Azure Person ID)
-                        biometric_record = Biometric.objects.filter(
-                            face_id=person_id, 
-                            is_active=True
-                        ).select_related("user").first()
-                        
-                        if biometric_record:
-                            user = biometric_record.user
+                    if matched_user_id:
+                        # AWS stores user.id as ExternalImageId
+                        try:
+                            user = User.objects.get(id=matched_user_id)
                             if not user.is_active:
                                 user = None
                                 reason = "Rostro reconocido pero el usuario está inactivo."
                             else:
-                                score = 1.0  # Azure identify_face internal threshold met
-                        else:
-                            reason = "Persona reconocida en Azure pero no vinculada a un usuario local."
+                                score = confidence / 100.0
+                        except User.DoesNotExist:
+                            reason = f"FaceId matched ExternalImageId {matched_user_id} but user not found in DB."
                     else:
                         reason = "Rostro no reconocido en el sistema biométrico."
                 except Exception as e:
-                    reason = f"Error procesando imagen facial: {e}"
+                    reason = f"Error en búsqueda biométrica AWS: {e}"
                     alert_flag = True
                     
             elif payload.method == AccessMethod.PIN:
@@ -151,12 +144,14 @@ class AccessService:
                         reason = "Error de integridad de seguridad en el PIN."
                 else:
                     # FALLBACK: Search legacy PINs (where pin_index is NULL)
-                    # This is the "slow" path (15s delay) but ensures existing users aren't locked out.
+                    # We optimize this by only checking users who have permission for this aula.
                     legacy_pins = PinContingency.objects.filter(
                         is_active=True, 
                         expires_at__gt=now,
-                        pin_index__isnull=True
-                    ).select_related("user")
+                        pin_index__isnull=True,
+                        user__access_permissions__aula_id=payload.aula_id,
+                        user__access_permissions__is_active=True
+                    ).select_related("user").distinct()
                     
                     if legacy_pins.exists():
                         logger.info(f"PIN Index not found. Searching {legacy_pins.count()} legacy PINs (Slow Path)...")

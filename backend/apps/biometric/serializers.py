@@ -12,7 +12,7 @@ from .models import Biometric
 class BiometricSerializer(serializers.ModelSerializer):
     """
     face_id and storage_url are set by the service layer after interacting with
-    Azure AI Face and Azure Blob Storage. The API surface here is used for
+    AWS Rekognition and AWS S3. The API surface here is used for
     admin review and enrollment management.
     """
 

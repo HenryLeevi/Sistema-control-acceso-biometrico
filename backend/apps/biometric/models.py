@@ -14,10 +14,10 @@ from apps.users.models import User
 
 class Biometric(models.Model):
     """
-    Stores a reference to a biometric enrollment in Azure AI Face.
+    Stores a reference to a biometric enrollment in AWS Rekognition.
 
-    face_id    : The Person ID returned by Azure AI Face after enrollment.
-    storage_url: The URL of the enrolled image stored in Azure Blob Storage.
+    face_id    : The Face ID returned by AWS Rekognition after enrollment.
+    storage_url: The URL of the enrolled image stored in AWS S3.
 
     A user can have multiple records (non-unique FK).
     Service layer enforces that only one is active per user.
@@ -32,11 +32,11 @@ class Biometric(models.Model):
     )
     face_id = models.CharField(
         max_length=255,
-        help_text="Azure AI Face Person ID (returned after enrollment).",
+        help_text="AWS Rekognition Face ID (returned after enrollment).",
     )
     storage_url = models.URLField(
         max_length=500,
-        help_text="Azure Blob Storage URL of the enrolled face image.",
+        help_text="AWS S3 URL of the enrolled face image.",
     )
     is_active = models.BooleanField(
         default=True,

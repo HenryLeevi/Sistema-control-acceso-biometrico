@@ -15,8 +15,13 @@ channels==4.0.0
 channels-redis==4.2.0
 daphne==4.1.0
 
-# AWS
+# AWS (Legacy / Backup)
 boto3==1.34.69
+
+# Azure (Production Biometrics)
+azure-cognitiveservices-vision-face==0.4.1
+azure-storage-blob==12.19.1
+msrest==0.7.1
 
 # Utilities
 Pillow==10.2.0

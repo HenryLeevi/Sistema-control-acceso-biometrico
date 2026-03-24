@@ -25,19 +25,20 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False") == "True"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# In production, ALLOWED_HOSTS must be explicitly defined via environment variable
-_allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
-if _allowed_hosts_raw:
-    ALLOWED_HOSTS = _allowed_hosts_raw.split(",")
-    # Azure internal health check IP (link-local)
-    if "169.254.131.2" not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append("169.254.131.2")
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
 else:
-    # Only allow localhost/127.0.0.1 by default. 
-    # Production hosts MUST be in ALLOWED_HOSTS environment variable.
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
+    if _allowed_hosts_raw:
+        ALLOWED_HOSTS = _allowed_hosts_raw.split(",")
+        # Azure internal health check IP (link-local)
+        if "169.254.131.2" not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append("169.254.131.2")
+    else:
+        # Default fallback
+        ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
+CSRF_TRUSTED_ORIGINS = [o.strip().rstrip('/') for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
 
 # ─────────────────────────────────────────
 # Application definition
@@ -248,9 +249,7 @@ CHANNEL_LAYERS = {
 # ─────────────────────────────────────────
 # CORS
 # ─────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
-).split(",")
+CORS_ALLOWED_ORIGINS = [o.strip().rstrip('/') for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
 CORS_ALLOW_CREDENTIALS = True
 
 # ─────────────────────────────────────────
