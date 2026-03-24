@@ -21,12 +21,14 @@ django_asgi_app = get_asgi_application()
 from apps.devices.consumers import DeviceConsumer
 
 websocket_urlpatterns = [
-    re_path(r"ws/devices/(?P<device_id>[^/]+)/$", DeviceConsumer.as_asgi()),
+    re_path(r"^ws/devices/(?P<device_id>[^/]+)/$", DeviceConsumer.as_asgi()),
 ]
 
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AuthMiddlewareStack(URLRouter(websocket_urlpatterns)),
+        "websocket": AllowedHostsOriginValidator(
+            AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
+        ),
     }
 )
