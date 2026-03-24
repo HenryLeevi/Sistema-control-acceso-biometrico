@@ -399,7 +399,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
         <div className="flex-1 min-w-[1100px] flex flex-col h-full">
           {/* Header */}
           <div 
-            className="grid border-b border-slate-200 bg-white sticky top-0 z-40"
+            className="grid border-b border-slate-200 bg-white sticky top-0 z-10"
             style={{ 
               gridTemplateColumns: '80px repeat(7, 1fr)',
             }}
@@ -472,7 +472,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
       >
         {/* Hours labels column */}
         <div 
-          className="grid grid-rows-[repeat(48,25px)] border-r border-slate-100 bg-slate-50/50 sticky left-0 z-50 h-[1200px] shadow-[2px_0_5px_rgba(0,0,0,0.02)]"
+          className="grid grid-rows-[repeat(48,25px)] border-r border-slate-100 bg-slate-50/50 sticky left-0 z-20 h-[1200px] shadow-[2px_0_5px_rgba(0,0,0,0.02)]"
         >
           {HOURS.map(h => (
             <div key={h} className="row-span-2 border-b border-slate-100/50 flex items-start justify-center pt-2">
@@ -488,7 +488,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
               {/* Now Indicator line */}
               {date.toDateString() === now.toDateString() && (
                 <div 
-                  className="absolute left-0 right-0 z-[60] flex items-center pointer-events-none"
+                  className="absolute left-0 right-0 z-30 flex items-center pointer-events-none"
                   style={{ top: nowPos.top }}
                 >
                   <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 shadow-sm" />
@@ -545,7 +545,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
                         "absolute z-20 rounded-md p-1.5 shadow-sm cursor-pointer group hover:shadow-md transition-all border overflow-hidden select-none",
                         isSelecting && "pointer-events-none opacity-60",
                         draggingEvent?.id === p.id && "opacity-40 grayscale scale-95 z-0",
-                        selectedEventId === p.id ? "ring-2 ring-blue-500 ring-offset-1 z-30 shadow-lg scale-[1.02]" : "hover:scale-[1.01]"
+                        selectedEventId === p.id ? "ring-2 ring-blue-500 ring-offset-1 z-[15] shadow-lg scale-[1.02]" : "hover:scale-[1.01]"
                       )}
                       style={{
                         ...getEventPosition(p, overlap),
@@ -630,7 +630,7 @@ export function WeeklyCalendar({ permissions, readOnly }: WeeklyCalendarProps) {
               {selection && selection.day === dayIndex && (
                 <div 
                   className={cn(
-                    "absolute inset-x-1 border-2 rounded-md z-50 pointer-events-none flex items-center justify-center overflow-hidden transition-all duration-75",
+                    "absolute inset-x-1 border-2 rounded-md z-20 pointer-events-none flex items-center justify-center overflow-hidden transition-all duration-75",
                     isSelecting ? "border-blue-500 bg-blue-500/10 shadow-[0_0_15px_rgba(37,99,235,0.2)]" : "border-slate-400 bg-slate-400/10"
                   )}
                   style={{
