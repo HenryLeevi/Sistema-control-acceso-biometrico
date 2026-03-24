@@ -29,6 +29,9 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
 if _allowed_hosts_raw:
     ALLOWED_HOSTS = _allowed_hosts_raw.split(",")
+    # Azure internal health check IP (link-local)
+    if "169.254.131.2" not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append("169.254.131.2")
 else:
     # Only allow localhost/127.0.0.1 by default. 
     # Production hosts MUST be in ALLOWED_HOSTS environment variable.

@@ -92,7 +92,8 @@ class AccessService:
         score = None
         
         correlation_id = uuid.uuid4()
-        d_id = payload.device_id  # Use device_id from input
+        d_id = payload.device_id
+        aula = None # Initialize to avoid UnboundLocalError
         
         try:
             # 1. Identify User

@@ -383,6 +383,9 @@ class AccessValidateView(APIView):
                 status=status.HTTP_200_OK,
             )
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            logger.error(f"Access validation failed: {e}", exc_info=True)
             return Response({"error": str(e)}, status=500)
 
 
