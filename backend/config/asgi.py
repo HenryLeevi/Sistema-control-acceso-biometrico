@@ -26,14 +26,9 @@ websocket_urlpatterns = [
 ]
 
 # Configuración del stack de WebSocket
-# En modo DEBUG, relajamos la validación de origen para facilitar pruebas en red local
-from django.conf import settings
-if settings.DEBUG:
-    websocket_stack = AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
-else:
-    websocket_stack = AllowedHostsOriginValidator(
-        AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
-    )
+# En producción, Daphne/Channels puede rechazar conexiones sin encabezado 'Origin' (como las de IoT).
+# Para este sistema de acceso, permitimos conexiones basadas en ID de dispositivo y AuthMiddleware.
+websocket_stack = AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
 
 application = ProtocolTypeRouter(
     {
