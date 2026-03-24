@@ -1,9 +1,14 @@
 import { AuthResponse } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+  (typeof window !== 'undefined' && 
+   window.location.hostname !== 'localhost' && 
+   window.location.hostname !== '127.0.0.1' &&
+   !window.location.hostname.startsWith('192.168.') &&
+   !window.location.hostname.startsWith('172.') &&
+   !window.location.hostname.startsWith('10.')
     ? 'https://biometricobackendhenry-c5ejfad0cbd5h5ag.eastus2-01.azurewebsites.net/api' 
-    : 'http://localhost:8000/api');
+    : `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api`);
 const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
   ? false
   : process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
