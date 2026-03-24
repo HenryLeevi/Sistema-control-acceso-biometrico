@@ -64,7 +64,7 @@ class AccessService:
 
     Phase 2 implementation will:
       1. Identify the user from the input payload:
-           FACE   → Call Azure AI Face to match face against enrolled biometrics
+           FACE   → Call AWS Rekognition to match face against enrolled biometrics
            PIN    → Hash the input PIN and compare against PinContingency records
            MANUAL → Validate a signed override token (admin-issued)
       2. Verify the identified user has a valid, active AccessPermission

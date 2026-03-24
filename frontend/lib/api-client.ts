@@ -1,6 +1,9 @@
 import { AuthResponse } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? 'https://biometricobackendhenry-c5ejfad0cbd5h5ag.eastus2-01.azurewebsites.net/api' 
+    : 'http://localhost:8000/api');
 const MOCK_MODE = typeof process.env.NEXT_PUBLIC_MOCK_MODE === 'undefined'
   ? false
   : process.env.NEXT_PUBLIC_MOCK_MODE === 'true';

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? 'wss://biometricobackendhenry-c5ejfad0cbd5h5ag.eastus2-01.azurewebsites.net' 
+    : 'ws://localhost:8000');
 
 export function useDeviceStatus(deviceId: string | null) {
   const [lastUpdate, setLastUpdate] = useState<{ lock_id: string; state: 'OPEN' | 'CLOSED' } | null>(null);

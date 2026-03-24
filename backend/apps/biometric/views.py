@@ -50,7 +50,7 @@ from rest_framework import status
 class BiometricViewSet(viewsets.ModelViewSet):
     """
     CRUD for biometric enrollment records.
-    Actual Azure AI Face enrollment is handled at the service layer.
+    Actual AWS Rekognition enrollment is handled at the service layer.
     """
 
     queryset = Biometric.objects.select_related("user").all().order_by("-is_active", "user__apellido")
@@ -61,8 +61,8 @@ class BiometricViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Intercepts creation to upload images to Azure Blob Storage,
-        and register the person in Azure AI Face.
+        Intercepts creation to upload images to AWS S3,
+        and register the person in AWS Rekognition.
         Expects multipart/form-data: `user` (UUID) and `images` (List of files).
         """
         user_id = request.data.get("user")

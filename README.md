@@ -9,7 +9,8 @@ Diseñado para integrarse con un backend **API REST (Django DRF)** utilizando:
 
 - JWT (Access + Refresh)
 - RBAC (Roles y permisos)
-- Azure AI Face (verificación biométrica)
+- AWS Rekognition (verificación biométrica)
+- AWS S3 (almacenamiento de imágenes)
 - PostgreSQL (eventos y auditoría)
 
 ---
@@ -21,7 +22,7 @@ Diseñado para integrarse con un backend **API REST (Django DRF)** utilizando:
 - Gestión de usuarios + estado activo/inactivo
 - Asignación de roles (RBAC)
 - Permisos por aula y horario
-- Enrolamiento biométrico (subida de imágenes → Azure AI Face)
+- Enrolamiento biométrico (subida a AWS S3 + indexación en Rekognition)
 - Visualización de eventos con filtros avanzados
 - Sistema de alertas
 - Reportes y analítica (tendencias, puntualidad, rechazos)
@@ -53,7 +54,7 @@ Diseñado para integrarse con un backend **API REST (Django DRF)** utilizando:
 ```bash
 npm install
 
-.env.local
+.env.local 
 
 
 
@@ -66,4 +67,5 @@ http://localhost:3000
 
 # update deploy frontend
 # final fix cors
+#variables aws
 
