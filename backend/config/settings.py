@@ -30,7 +30,9 @@ _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
 if _allowed_hosts_raw:
     ALLOWED_HOSTS = _allowed_hosts_raw.split(",")
 else:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "192.168.100.10"]
+    # Only allow localhost/127.0.0.1 by default. 
+    # Production hosts MUST be in ALLOWED_HOSTS environment variable.
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
 

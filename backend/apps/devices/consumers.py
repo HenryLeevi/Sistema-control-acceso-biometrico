@@ -21,14 +21,22 @@ class DeviceConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.device_id = self.scope["url_route"]["kwargs"]["device_id"]
         self.group_name = f"device_{self.device_id}"
+        
+        logger.info(f"Handshake started for device: {self.device_id}")
 
         # Join room group
         await self.channel_layer.group_add(self.group_name, self.channel_name)
-        await self.accept()
         
-        # Update device status to ONLINE
-        await self.update_device_status("ONLINE")
-        logger.info(f"Device {self.device_id} connected.")
+        try:
+            await self.accept()
+            logger.info(f"WebSocket accepted for device: {self.device_id}")
+            
+            # Update device status to ONLINE
+            await self.update_device_status("ONLINE")
+            logger.info(f"Device {self.device_id} status updated to ONLINE.")
+        except Exception as e:
+            logger.error(f"Error during connect/accept for device {self.device_id}: {e}")
+            raise e
 
     async def disconnect(self, close_code):
         # Update device status to OFFLINE
