@@ -6,7 +6,7 @@ import { KPICard } from '@/components/kpi-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useKPIData, useAlertas, useEventos, useUsuarios, usePermissions } from '@/lib/api-hooks';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CheckCircle, XCircle, Activity, AlertTriangle, Users, ShieldAlert, UserX, Clock, LayoutDashboard } from 'lucide-react';
+import { CheckCircle, XCircle, Activity, AlertTriangle, Users, ShieldAlert, UserX, Clock, LayoutDashboard, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -109,6 +109,12 @@ function AdminDashboard() {
     }
   }, [activeWidgets, dashboardMode, dashboardColor, isLoaded]);
 
+  const addWidget = (type: string) => {
+    if (type && !activeWidgets.find(w => w.id === type)) {
+      setActiveWidgets((prev) => [...prev, { id: type, size: 'sm' }]);
+    }
+  };
+
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('widgetType', id);
   };
@@ -116,9 +122,7 @@ function AdminDashboard() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('widgetType');
-    if (type && !activeWidgets.find(w => w.id === type)) {
-      setActiveWidgets((prev) => [...prev, { id: type, size: 'sm' }]);
-    }
+    addWidget(type);
   };
 
   const removeWidget = (id: string) => {
@@ -239,6 +243,7 @@ function AdminDashboard() {
                     key={widget.id}
                     draggable={!isActive}
                     onDragStart={(e) => handleDragStart(e, widget.id)}
+                    onClick={() => addWidget(widget.id)}
                     className={cn(
                       "flex items-center space-x-2 px-4 py-2 rounded-full border text-sm font-medium transition-all group",
                       isActive 
@@ -247,6 +252,7 @@ function AdminDashboard() {
                     )}
                     style={!isActive ? { borderLeftColor: dashboardColor, borderLeftWidth: '3px' } : {}}
                   >
+                    {!isActive && <Plus className="h-3 w-3 text-slate-400 group-hover:text-indigo-500 transition-colors mr-1" />}
                     <Icon className="h-4 w-4" style={!isActive ? { color: dashboardColor } : {}} />
                     <span>{widget.label}</span>
                   </div>
@@ -269,7 +275,7 @@ function AdminDashboard() {
               <div className="text-center text-slate-400 pointer-events-none">
                 <LayoutDashboard className="h-16 w-16 mx-auto mb-4 opacity-20 text-slate-500" />
                 <p className="text-xl font-bold text-slate-500">Lienzo Vacío</p>
-                <p className="text-sm mt-1">Arrastra aquí las etiquetas superiores para armar tu Dashboard</p>
+                <p className="text-sm mt-1">Arrastra o toca las etiquetas superiores para armar tu Dashboard</p>
               </div>
             ) : (
               activeWidgets.map((widget) => (

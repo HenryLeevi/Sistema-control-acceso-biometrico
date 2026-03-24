@@ -40,6 +40,7 @@ from .serializers import (
     TeacherOTPSerializer,
 )
 from .services import AccessService, AccessValidationInput, AccessMethod
+from .filters import AccessEventFilter
 from apps.users.models import User as LocalUser
 
 
@@ -261,7 +262,7 @@ class AccessEventViewSet(
     serializer_class = AccessEventSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ["user", "aula", "device", "method", "result", "alert_flag"]
+    filterset_class = AccessEventFilter
     ordering_fields = ["timestamp"]
     ordering = ["-timestamp"]
 
@@ -278,8 +279,8 @@ class AccessEventViewSet(
             writer.writerow([
                 event.id,
                 event.timestamp,
-                event.user_nombre or 'Anónimo',
-                event.user_email or 'N/A',
+                event.user.full_name if event.user else 'Anónimo',
+                event.user.email if event.user else 'N/A',
                 event.aula.code if event.aula else 'N/A',
                 event.method,
                 event.result,
@@ -313,8 +314,8 @@ class AccessEventViewSet(
             ws.append([
                 str(event.id),
                 event.timestamp.replace(tzinfo=None) if event.timestamp else '',
-                event.user_nombre or 'Anónimo',
-                event.user_email or 'N/A',
+                event.user.full_name if event.user else 'Anónimo',
+                event.user.email if event.user else 'N/A',
                 event.aula.code if event.aula else 'N/A',
                 event.method,
                 event.result,
@@ -591,12 +592,22 @@ class ReporteView(APIView):
 
         por_metodo = events.values("method").annotate(cantidad=Count("id"))
 
+        # Most active users in the period
+        usuarios_activos = (
+            events.filter(user__isnull=False)
+            .values("user__nombre", "user__apellido", "user__email")
+            .annotate(cantidad=Count("id"))
+            .order_by("-cantidad")[:5]
+        )
+
+        tasa_puntualidad = round((permitidos / total * 100), 1) if total else 0
+
         return Response({
-            "periodo": f"{start.date()} / {end.date() - timedelta(days=1) if start_str else end.date()}",
+            "periodo": f"{start.date()} - {end.date() - timedelta(days=1)}",
             "total_accesos": total,
             "accesos_permitidos": permitidos,
             "accesos_denegados": denegados,
-            "tasa_puntualidad": 0,
+            "tasa_puntualidad": tasa_puntualidad,
             "accesos_por_dia": [
                 {"fecha": str(item["fecha"]), "permitidos": item["permitidos"], "denegados": item["denegados"]}
                 for item in por_dia
@@ -606,7 +617,13 @@ class ReporteView(APIView):
                 for item in por_metodo
             ],
             "heatmap": [],
-            "usuarios_mas_activos": [],
+            "usuarios_mas_activos": [
+                {
+                    "nombre": f"{u['user__nombre']} {u['user__apellido']}".strip() or u["user__email"],
+                    "cantidad": u["cantidad"]
+                }
+                for u in usuarios_activos
+            ],
         })
 
 
