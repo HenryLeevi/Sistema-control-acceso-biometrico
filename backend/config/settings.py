@@ -23,6 +23,7 @@ load_dotenv(BASE_DIR / ".env")
 # ─────────────────────────────────────────
 SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False") == "True"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # In production, ALLOWED_HOSTS must be explicitly defined via environment variable
 _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS")
