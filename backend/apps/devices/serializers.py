@@ -18,7 +18,7 @@ class LockSerializer(serializers.ModelSerializer):
         model = Lock
         fields = [
             "id", "name", "device", "device_name", "aula", "aula_code",
-            "gpio_pin", "lock_type", "is_active", "created_at", "updated_at"
+            "gpio_pin", "lock_type", "open_duration", "is_active", "created_at", "updated_at"
         ]
         read_only_fields = ["id", "created_at", "updated_at", "aula_code", "device_name"]
 

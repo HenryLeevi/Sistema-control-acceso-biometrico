@@ -81,7 +81,7 @@ class AccessService:
         from apps.users.models import User, PinContingency
         from apps.biometric.models import Biometric
         from apps.access.models import Aula, AccessPermission, AccessEvent, Schedule
-        from apps.biometric.services.aws_rekognition import search_face_by_image
+        from apps.biometric.services.azure_face import identify_face
         import time
         start_time = time.time()
         
@@ -92,30 +92,38 @@ class AccessService:
         score = None
         
         correlation_id = uuid.uuid4()
+        d_id = payload.device_id  # Use device_id from input
         
         try:
             # 1. Identify User
             if payload.method == AccessMethod.FACE:
                 try:
-                    # Decode base64 image from device
+                    # Identify face using Azure Face API
+                    # The payload.data is expected to be a base64 encoded image or a stream
+                    import base64
                     image_data = base64.b64decode(payload.data)
+                    image_stream = io.BytesIO(image_data)
                     
-                    found_user_id, sim_score = search_face_by_image(image_data)
-                    score = sim_score
+                    person_id = identify_face(image_stream)
                     
-                    if found_user_id:
-                        # Double check: confirm user exists AND has an active biometric enrollment
-                        from apps.biometric.models import Biometric
-                        user = User.objects.filter(id=found_user_id, is_active=True).first()
-                        if not user:
-                            reason = "Rostro reconocido pero el usuario está inactivo o no existe en DB local."
+                    if person_id:
+                        # Find the biometric record that has this person_id (Azure Person ID)
+                        biometric_record = Biometric.objects.filter(
+                            face_id=person_id, 
+                            is_active=True
+                        ).select_related("user").first()
+                        
+                        if biometric_record:
+                            user = biometric_record.user
+                            if not user.is_active:
+                                user = None
+                                reason = "Rostro reconocido pero el usuario está inactivo."
+                            else:
+                                score = 1.0  # Azure identify_face internal threshold met
                         else:
-                            # Verify local enrollment status
-                            if not Biometric.objects.filter(user=user, is_active=True).exists():
-                                user = None # Revoke identification
-                                reason = "El usuario no tiene un enrolamiento biométrico activo en este momento."
+                            reason = "Persona reconocida en Azure pero no vinculada a un usuario local."
                     else:
-                        reason = "Rostro no reconocido en el sistema."
+                        reason = "Rostro no reconocido en el sistema biométrico."
                 except Exception as e:
                     reason = f"Error procesando imagen facial: {e}"
                     alert_flag = True
@@ -232,11 +240,11 @@ class AccessService:
                                         "lock_id": str(lock.id),
                                         "aula_code": aula.code,
                                         "gpio_pin": lock.gpio_pin,
-                                        "duration": 5  # Seconds to stay open
+                                        "duration": lock.open_duration  # Dynamic duration from DB
                                     }
                                 }
                             )
-                            logger.info(f"Sent OPEN_DOOR command to device {lock.device.id} for Aula {aula.code}")
+                            logger.info(f"Sent OPEN_DOOR command to device {lock.device.id} for Aula {aula.code} (duration: {lock.open_duration}s)")
                     except Exception as ws_err:
                         logger.error(f"Failed to emit WebSocket command: {ws_err}")
                 else:
@@ -249,15 +257,21 @@ class AccessService:
 
         # 3. Log Audit Event
         event_id = uuid.uuid4()
-        duration = time.time() - start_time
+        duration_proc = time.time() - start_time
         
-        if aula:
+        # If d_id is still None, try to get it from the lock associated with the aula
+        if not d_id and aula:
+            from apps.devices.models import Lock
+            lock_obj = Lock.objects.filter(aula=aula).first()
+            if lock_obj:
+                d_id = lock_obj.device_id
+        
+        # As a final fallback for logging robustness
+        if not d_id:
             from apps.devices.models import Device
             dev_obj = Device.objects.first()
             if dev_obj:
                 d_id = dev_obj.id
-            else:
-                logger.warning("Access attempt without a registered device.")
 
         if d_id:
             try:
@@ -271,7 +285,7 @@ class AccessService:
                     alert_flag=alert_flag,
                     correlation_id=correlation_id,
                     score=score,
-                    response_time=duration
+                    response_time=duration_proc
                 )
                 event_id = event.id
             except Exception as e:

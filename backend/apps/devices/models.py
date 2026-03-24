@@ -70,6 +70,10 @@ class Lock(models.Model):
     )
     
     is_active = models.BooleanField(default=True)
+    open_duration = models.IntegerField(
+        default=5,
+        help_text="Duración en segundos que la puerta permanece abierta (ej. 5)"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

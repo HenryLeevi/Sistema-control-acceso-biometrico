@@ -359,11 +359,16 @@ class AccessValidateView(APIView):
         validated = serializer.validated_data
 
         try:
+            # Source device_id from the lock associated with the aula
+            from apps.devices.models import Lock
+            lock = Lock.objects.filter(aula_id=validated["aula_id"]).first()
+            device_id = lock.device_id if lock else None
+
             payload = AccessValidationInput(
                 method=AccessMethod(validated["method"]),
                 data=validated["data"],
                 aula_id=validated["aula_id"],
-                device_id=None,
+                device_id=device_id,
             )
             result = AccessService.validate(payload)
             return Response(
